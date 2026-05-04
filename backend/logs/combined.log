@@ -1,0 +1,58 @@
+2026-05-04 15:02:20 [info]: 🔐 Crypto Platform API running on http://localhost:3001
+2026-05-04 15:02:20 [info]: 📚 API Docs available at http://localhost:3001/api-docs
+2026-05-04 15:02:39 [info]: GET /api-docs - ::1
+2026-05-04 15:02:39 [info]: GET /api-docs/ - ::1
+2026-05-04 15:02:39 [info]: GET /api-docs/swagger-ui.css - ::1
+2026-05-04 15:02:39 [info]: GET /api-docs/swagger-ui-bundle.js - ::1
+2026-05-04 15:02:39 [info]: GET /api-docs/swagger-ui-standalone-preset.js - ::1
+2026-05-04 15:02:39 [info]: GET /api-docs/swagger-ui-init.js - ::1
+2026-05-04 15:03:06 [info]: GET /api/crypto/algorithms - ::1
+2026-05-04 15:03:06 [info]: GET /api/crypto/algorithms - ::1
+2026-05-04 15:03:44 [info]: POST /api/crypto/encrypt - ::1
+2026-05-04 15:03:44 [info]: Encrypting 8 bytes with algorithms: trivium, grain128aead, mickey, chacha20, ascon
+2026-05-04 15:03:44 [error]: TypeError: Do not know how to serialize a BigInt
+    at JSON.stringify (<anonymous>)
+    at stringify (/home/bekmurod/lwt-cipper/backend/node_modules/express/lib/response.js:1160:12)
+    at ServerResponse.json (/home/bekmurod/lwt-cipper/backend/node_modules/express/lib/response.js:271:14)
+    at /home/bekmurod/lwt-cipper/backend/src/routes/crypto.ts:134:7
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+2026-05-04 15:03:53 [info]: POST /api/crypto/encrypt - ::1
+2026-05-04 15:03:53 [info]: Encrypting 8 bytes with algorithms: trivium
+2026-05-04 15:10:52 [info]: 🔐 Crypto Platform API running on http://localhost:3001
+2026-05-04 15:10:52 [info]: 📚 API Docs available at http://localhost:3001/api-docs
+2026-05-04 15:11:45 [info]: POST /api/crypto/encrypt/file - ::1
+2026-05-04 15:11:45 [info]: Encrypting file: Screenshot_2026-04-29_17_59_19.png (717248 bytes) with grain128aead
+2026-05-04 15:56:07 [info]: 🔐 Crypto Platform API running on http://localhost:3001
+2026-05-04 15:56:07 [info]: 📚 API Docs available at http://localhost:3001/api-docs
+2026-05-04 15:57:00 [info]: POST /api/crypto/benchmark - ::ffff:127.0.0.1
+2026-05-04 15:57:00 [info]: Starting benchmark suite...
+2026-05-04 15:59:03 [info]: POST /api/crypto/encrypt - ::ffff:127.0.0.1
+2026-05-04 15:59:03 [info]: Encrypting 5 bytes with algorithms: chacha20
+2026-05-04 16:00:26 [info]: POST /api/crypto/encrypt - ::ffff:127.0.0.1
+2026-05-04 16:00:26 [info]: Encrypting 5 bytes with algorithms: trivium, grain128aead, mickey, chacha20, ascon
+2026-05-04 16:00:26 [error]: TypeError: Do not know how to serialize a BigInt
+    at JSON.stringify (<anonymous>)
+    at stringify (C:\Users\1\Desktop\univer\diplom\code\lwt-cipper\lwt-cipper\backend\node_modules\express\lib\response.js:1160:12)
+    at ServerResponse.json (C:\Users\1\Desktop\univer\diplom\code\lwt-cipper\lwt-cipper\backend\node_modules\express\lib\response.js:271:14)
+    at C:\Users\1\Desktop\univer\diplom\code\lwt-cipper\lwt-cipper\backend\src\routes\crypto.ts:134:7
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-05-04 16:01:02 [info]: POST /api/crypto/decrypt - ::1
+2026-05-04 16:01:02 [info]: Decrypting with chacha20
+2026-05-04 16:01:12 [info]: GET /api/crypto/algorithms - ::1
+2026-05-04 16:01:12 [info]: GET /api/crypto/algorithms - ::1
+2026-05-04 16:01:22 [info]: POST /api/crypto/benchmark - ::1
+2026-05-04 16:01:22 [info]: Starting benchmark suite...
+2026-05-04 16:04:05 [info]: GET /api/crypto/algorithms - ::ffff:127.0.0.1
+2026-05-04 16:04:05 [info]: GET /api/crypto/algorithms - ::1
+2026-05-04 16:04:10 [info]: GET /api/crypto/algorithms - ::1
+2026-05-04 16:04:10 [info]: GET /api/crypto/algorithms - ::1
+2026-05-04 16:04:13 [info]: GET /api/crypto/algorithms - ::1
+2026-05-04 16:04:13 [info]: GET /api/crypto/algorithms - ::1
+2026-05-04 16:04:26 [info]: POST /api/crypto/encrypt/file - ::1
+2026-05-04 16:04:26 [info]: Encrypting file: 1.2 reja.txt (624 bytes) with chacha20
+2026-05-04 16:05:06 [info]: POST /api/crypto/encrypt/file - ::1
+2026-05-04 16:05:06 [info]: Encrypting file: 1.2 reja.txt (624 bytes) with mickey
+2026-05-04 16:05:16 [info]: POST /api/crypto/decrypt/from-file - ::1
+2026-05-04 16:05:37 [info]: POST /api/crypto/encrypt/file - ::1
+2026-05-04 16:05:37 [info]: Encrypting file: Screenshot 27.04.2026 12_06_21.png (267716 bytes) with chacha20
+2026-05-04 16:05:46 [info]: POST /api/crypto/decrypt/from-file - ::1

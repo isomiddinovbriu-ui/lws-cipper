@@ -1,0 +1,12 @@
+2026-05-04 15:03:44 [error]: TypeError: Do not know how to serialize a BigInt
+    at JSON.stringify (<anonymous>)
+    at stringify (/home/bekmurod/lwt-cipper/backend/node_modules/express/lib/response.js:1160:12)
+    at ServerResponse.json (/home/bekmurod/lwt-cipper/backend/node_modules/express/lib/response.js:271:14)
+    at /home/bekmurod/lwt-cipper/backend/src/routes/crypto.ts:134:7
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+2026-05-04 16:00:26 [error]: TypeError: Do not know how to serialize a BigInt
+    at JSON.stringify (<anonymous>)
+    at stringify (C:\Users\1\Desktop\univer\diplom\code\lwt-cipper\lwt-cipper\backend\node_modules\express\lib\response.js:1160:12)
+    at ServerResponse.json (C:\Users\1\Desktop\univer\diplom\code\lwt-cipper\lwt-cipper\backend\node_modules\express\lib\response.js:271:14)
+    at C:\Users\1\Desktop\univer\diplom\code\lwt-cipper\lwt-cipper\backend\src\routes\crypto.ts:134:7
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
