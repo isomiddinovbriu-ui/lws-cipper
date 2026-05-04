@@ -92,6 +92,8 @@ export function buildTxtReport(data: {
   tag?: string;
   timeTaken: number;
   throughput: number;
+  originalFilename?: string;
+  originalMimeType?: string;
 }): string {
   const lines = [
     '--------------------------------',
@@ -99,6 +101,8 @@ export function buildTxtReport(data: {
     `Key: ${data.key}`,
     `Nonce: ${data.nonce}`,
   ];
+  if (data.originalFilename) lines.push(`Original Filename: ${data.originalFilename}`);
+  if (data.originalMimeType) lines.push(`Original Mime Type: ${data.originalMimeType}`);
   if (data.aad) lines.push(`Additional Auth Data: ${data.aad}`);
   lines.push(`Ciphertext: ${data.ciphertext}`);
   if (data.tag) lines.push(`Authentication Tag: ${data.tag}`);

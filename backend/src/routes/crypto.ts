@@ -32,9 +32,9 @@ cryptoRouter.get('/algorithms', (_req: Request, res: Response) => {
         nonceBits: 80,
         isAEAD: false,
         family: 'eSTREAM',
-        description: 'Ultra-lightweight stream cipher with 288-bit state across three shift registers.',
-        strengths: ['Very low hardware footprint', 'Simple design', 'High speed in hardware'],
-        iotSuitability: 'Excellent',
+        description: 'Uchta smenali registrlar bo\'ylab 288 bitli holatga ega ultra yengil oqim shifrlash.',
+        strengths:['Juda kam apparat ta\'minoti', 'Oddiy dizayn', 'Uskuna ta\'minotida yuqori tezlik'],
+        iotSuitability: 'A\'lo',
       },
       {
         id: 'grain128aead',
@@ -44,9 +44,9 @@ cryptoRouter.get('/algorithms', (_req: Request, res: Response) => {
         nonceBits: 96,
         isAEAD: true,
         family: 'eSTREAM / NIST LWC',
-        description: 'Hardware-oriented AEAD stream cipher based on LFSR + NFSR with authentication.',
-        strengths: ['Authenticated encryption', '128-bit security', 'NIST finalist'],
-        iotSuitability: 'Excellent',
+        description: 'LFSR + NFSR asosida autentifikatsiyaga ega apparatga yo\'naltirilgan AEAD oqim shifrlash.',
+        strengths: ['Autentifikatsiyalangan shifrlash', '128-bitli xavfsizlik', 'NIST finalchisi'],
+        iotSuitability: 'A\'lo',
       },
       {
         id: 'mickey',
@@ -56,9 +56,9 @@ cryptoRouter.get('/algorithms', (_req: Request, res: Response) => {
         nonceBits: 80,
         isAEAD: false,
         family: 'eSTREAM',
-        description: 'Mutual Irregular Clocking KE-generator with two irregularly clocked registers.',
-        strengths: ['Resistance to algebraic attacks', 'Irregular clocking', 'Low power'],
-        iotSuitability: 'Good',
+        description: 'Ikkita tartibsiz soat registriga ega o\'zaro tartibsiz soat KE-generatori asosida oqim shifrlash.',
+        strengths: ['Algebraik hujumlarga qarshilik', 'Noto\'g\'ri soatlash', 'Kam quvvat'],
+        iotSuitability: 'Yaxshi',
       },
       {
         id: 'chacha20',
@@ -68,9 +68,9 @@ cryptoRouter.get('/algorithms', (_req: Request, res: Response) => {
         nonceBits: 96,
         isAEAD: false,
         family: 'RFC 7539',
-        description: 'ARX-based stream cipher with 20 rounds, successor to Salsa20.',
-        strengths: ['256-bit security', 'Software-optimized', 'Widely deployed (TLS 1.3)'],
-        iotSuitability: 'Moderate (software-focused)',
+        description: 'Salsa20 ning vorisi bo\'lgan, 20 ta raundli ARX asosidagi oqim shifr.',
+        strengths:['256-bitli xavfsizlik', 'Dasturiy ta\'minot optimallashtirilgan', 'Keng tarqalgan (TLS 1.3)'],
+        iotSuitability: 'O\'rtacha (dasturiy ta\'minotga yo\'naltirilgan)',
       },
       {
         id: 'ascon',
@@ -80,9 +80,9 @@ cryptoRouter.get('/algorithms', (_req: Request, res: Response) => {
         nonceBits: 128,
         isAEAD: true,
         family: 'NIST LWC Standard',
-        description: 'NIST standardized lightweight AEAD based on sponge construction with Ascon permutation.',
-        strengths: ['NIST LWC winner', '128-bit AEAD security', 'Compact hardware implementation'],
-        iotSuitability: 'Excellent',
+        description: 'NIST Ascon permutatsiyasi bilan gubka konstruktsiyasiga asoslangan yengil AEAD standartlashtirdi.',
+        strengths: ['NIST LWC g\'olibi', '128-bitli AEAD xavfsizligi', 'Kompakt apparat ta\'minotini amalga oshirish'],
+        iotSuitability: 'A\'lo',
       },
     ],
   });
@@ -160,6 +160,8 @@ cryptoRouter.post('/encrypt/file', uploadMiddleware.single('file'), async (req: 
     nonce,
     aad,
     captureSteps: captureSteps === 'true',
+    originalFilename: req.file.originalname,
+    originalMimeType: req.file.mimetype,
   });
 
   res.json({
@@ -181,7 +183,7 @@ cryptoRouter.post('/encrypt/file', uploadMiddleware.single('file'), async (req: 
  *     tags: [Crypto]
  */
 cryptoRouter.post('/decrypt', async (req: Request, res: Response) => {
-  const { algorithm, ciphertext, ciphertextEncoding, key, nonce, aad, tag, captureSteps } = req.body;
+  const { algorithm, ciphertext, ciphertextEncoding, key, nonce, aad, tag, captureSteps, originalFilename, originalMimeType } = req.body;
 
   if (!algorithm) throw createError('algorithm is required', 400);
   if (!ciphertext) throw createError('ciphertext is required', 400);
@@ -200,7 +202,16 @@ cryptoRouter.post('/decrypt', async (req: Request, res: Response) => {
     captureSteps,
   });
 
-  res.json({ success: true, data: result });
+  // If the client provided original filename/mime, include them in a parsedFile object
+  const parsed: Record<string, string> = {};
+  if (originalFilename) parsed['original_filename'] = originalFilename;
+  if (originalMimeType) parsed['original_mime_type'] = originalMimeType;
+
+  if (Object.keys(parsed).length > 0) {
+    res.json({ success: true, data: result, parsedFile: parsed });
+  } else {
+    res.json({ success: true, data: result });
+  }
 });
 
 /**

@@ -20,23 +20,23 @@ function TriviumStep({ step }: { step: Record<string, unknown> }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 font-mono text-xs">
       <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
-        <div className="text-blue-300 font-semibold mb-2">Register A (bits 0-31)</div>
+        <div className="text-blue-300 font-semibold mb-2">Registr A (bitlar 0-31)</div>
         <div className="text-slate-300">{formatValue(step.regA)}</div>
         <div className="text-slate-500 mt-1">t1 = {String(step.t1)}</div>
       </div>
       <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3">
-        <div className="text-emerald-300 font-semibold mb-2">Register B (bits 0-31)</div>
+        <div className="text-emerald-300 font-semibold mb-2">Registr B (bitlar 0-31)</div>
         <div className="text-slate-300">{formatValue(step.regB)}</div>
         <div className="text-slate-500 mt-1">t2 = {String(step.t2)}</div>
       </div>
       <div className="bg-violet-500/10 border border-violet-500/30 rounded-lg p-3">
-        <div className="text-violet-300 font-semibold mb-2">Register C (bits 0-31)</div>
+        <div className="text-violet-300 font-semibold mb-2">Registr C (bitlar 0-31)</div>
         <div className="text-slate-300">{formatValue(step.regC)}</div>
         <div className="text-slate-500 mt-1">t3 = {String(step.t3)}</div>
       </div>
       <div className="md:col-span-3 bg-dark-800/50 rounded-lg px-3 py-2 flex gap-6">
-        <span>Step: <span className="text-primary-300">{String(step.step)}</span></span>
-        <span>Output bit: <span className="text-amber-300 font-bold">{String(step.bit)}</span></span>
+        <span>Bosqich: <span className="text-primary-300">{String(step.step)}</span></span>
+        <span>Chiqish biti: <span className="text-amber-300 font-bold">{String(step.bit)}</span></span>
       </div>
     </div>
   );
@@ -46,7 +46,7 @@ function GrainStep({ step }: { step: Record<string, unknown> }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 font-mono text-xs">
       <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3">
-        <div className="text-emerald-300 font-semibold mb-2">LFSR (bits 0-7)</div>
+        <div className="text-emerald-300 font-semibold mb-2">LFSR (bitlar 0-7)</div>
         <div className="flex gap-1">
           {(step.lfsrSlice as number[])?.map((b, i) => (
             <span key={i} className={clsx(
@@ -57,7 +57,7 @@ function GrainStep({ step }: { step: Record<string, unknown> }) {
         </div>
       </div>
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
-        <div className="text-amber-300 font-semibold mb-2">NFSR (bits 0-7)</div>
+        <div className="text-amber-300 font-semibold mb-2">NFSR (bitlar 0-7)</div>
         <div className="flex gap-1">
           {(step.nfsrSlice as number[])?.map((b, i) => (
             <span key={i} className={clsx(
@@ -68,8 +68,8 @@ function GrainStep({ step }: { step: Record<string, unknown> }) {
         </div>
       </div>
       <div className="md:col-span-2 bg-dark-800/50 rounded-lg px-3 py-2 flex gap-6">
-        <span>Step: <span className="text-primary-300">{String(step.step)}</span></span>
-        <span>Keystream bit: <span className="text-amber-300 font-bold">{String(step.keystreamBit)}</span></span>
+        <span>Bosqich: <span className="text-primary-300">{String(step.step)}</span></span>
+        <span>Keystream biti: <span className="text-amber-300 font-bold">{String(step.keystreamBit)}</span></span>
       </div>
     </div>
   );
@@ -79,7 +79,7 @@ function MickeyStep({ step }: { step: Record<string, unknown> }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 font-mono text-xs">
       <div className="bg-violet-500/10 border border-violet-500/30 rounded-lg p-3">
-        <div className="text-violet-300 font-semibold mb-2">R Register (bits 0-7)</div>
+        <div className="text-violet-300 font-semibold mb-2">R registri (bitlar 0-7)</div>
         <div className="flex gap-1">
           {(step.rSlice as number[])?.map((b, i) => (
             <span key={i} className={clsx(
@@ -88,10 +88,10 @@ function MickeyStep({ step }: { step: Record<string, unknown> }) {
             )}>{b}</span>
           ))}
         </div>
-        <div className="text-slate-500 mt-2">Control bit: {String(step.controlBitR)}</div>
+        <div className="text-slate-500 mt-2">Boshqaruv biti: {String(step.controlBitR)}</div>
       </div>
       <div className="bg-rose-500/10 border border-rose-500/30 rounded-lg p-3">
-        <div className="text-rose-300 font-semibold mb-2">S Register (bits 0-7)</div>
+        <div className="text-rose-300 font-semibold mb-2">S registri (bitlar 0-7)</div>
         <div className="flex gap-1">
           {(step.sSlice as number[])?.map((b, i) => (
             <span key={i} className={clsx(
@@ -100,11 +100,11 @@ function MickeyStep({ step }: { step: Record<string, unknown> }) {
             )}>{b}</span>
           ))}
         </div>
-        <div className="text-slate-500 mt-2">Control bit: {String(step.controlBitS)}</div>
+        <div className="text-slate-500 mt-2">Boshqaruv biti: {String(step.controlBitS)}</div>
       </div>
       <div className="md:col-span-2 bg-dark-800/50 rounded-lg px-3 py-2 flex gap-6">
-        <span>Step: <span className="text-primary-300">{String(step.step)}</span></span>
-        <span>Output bit: <span className="text-amber-300 font-bold">{String(step.outputBit)}</span></span>
+        <span>Bosqich: <span className="text-primary-300">{String(step.step)}</span></span>
+        <span>Chiqish biti: <span className="text-amber-300 font-bold">{String(step.outputBit)}</span></span>
       </div>
     </div>
   );
@@ -119,7 +119,7 @@ function ChaCha20Step({ step }: { step: Record<string, unknown> }) {
     <div className="space-y-3 font-mono text-xs">
       {/* Initial state matrix */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
-        <div className="text-amber-300 font-semibold mb-2">Initial State Matrix (Block {String(step.blockIndex)})</div>
+        <div className="text-amber-300 font-semibold mb-2">Dastlabki holat matritsasi (blok {String(step.blockIndex)})</div>
         <div className="grid grid-cols-4 gap-1">
           {initial?.slice(0, 16).map((v, i) => (
             <div key={i} className="bg-dark-800/60 rounded px-2 py-1 text-slate-300 overflow-hidden text-center">
@@ -132,7 +132,7 @@ function ChaCha20Step({ step }: { step: Record<string, unknown> }) {
       {/* Sample quarter rounds */}
       {rounds && rounds.length > 0 && (
         <div className="bg-dark-800/50 rounded-lg p-3">
-          <div className="text-slate-300 font-semibold mb-2">Quarter Round (Round 0, QR 0)</div>
+          <div className="text-slate-300 font-semibold mb-2">Kvoter Round (Raund 0, QR 0)</div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {(['a', 'b', 'c', 'd'] as const).map(k => (
               <div key={k} className="text-center">
@@ -146,7 +146,7 @@ function ChaCha20Step({ step }: { step: Record<string, unknown> }) {
 
       {/* Final state */}
       <div className="bg-primary-500/10 border border-primary-500/30 rounded-lg p-3">
-        <div className="text-primary-300 font-semibold mb-2">Output State (after add-back)</div>
+        <div className="text-primary-300 font-semibold mb-2">Chiqish holati (add-backdan keyin)</div>
         <div className="grid grid-cols-4 gap-1">
           {final?.slice(0, 16).map((v, i) => (
             <div key={i} className="bg-dark-800/60 rounded px-2 py-1 text-slate-300 overflow-hidden text-center">
@@ -167,7 +167,7 @@ function AsconStep({ step }: { step: Record<string, unknown> }) {
     <div className="space-y-3 font-mono text-xs">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="bg-dark-800/50 rounded-lg p-3">
-          <div className="text-slate-400 font-semibold mb-2">State Before ({String(step.phase)})</div>
+            <div className="text-slate-400 font-semibold mb-2">Oldingi holat ({String(step.phase)})</div>
           {before?.map((v, i) => (
             <div key={i} className="flex gap-2 mb-1">
               <span className="text-slate-600 w-4">x{i}</span>
@@ -176,7 +176,7 @@ function AsconStep({ step }: { step: Record<string, unknown> }) {
           ))}
         </div>
         <div className="bg-primary-500/10 border border-primary-500/30 rounded-lg p-3">
-          <div className="text-primary-300 font-semibold mb-2">State After</div>
+          <div className="text-primary-300 font-semibold mb-2">Keyingi holat</div>
           {after?.map((v, i) => (
             <div key={i} className="flex gap-2 mb-1">
               <span className="text-slate-600 w-4">x{i}</span>
@@ -186,8 +186,8 @@ function AsconStep({ step }: { step: Record<string, unknown> }) {
         </div>
       </div>
       <div className="bg-dark-800/50 rounded-lg px-3 py-2">
-        <span>Block: <span className="text-primary-300">{String(step.blockIndex)}</span></span>
-        <span className="ml-4">Phase: <span className="text-amber-300">{String(step.phase)}</span></span>
+        <span>Blok: <span className="text-primary-300">{String(step.blockIndex)}</span></span>
+        <span className="ml-4">Faza: <span className="text-amber-300">{String(step.phase)}</span></span>
       </div>
     </div>
   );
@@ -212,7 +212,7 @@ export default function StepVisualization({ steps, algorithm }: StepVisualizatio
     <div className="mt-3 bg-dark-950/60 border border-slate-700/40 rounded-xl p-4 space-y-4">
       <div className="flex items-center justify-between">
         <h4 className="text-slate-300 font-medium text-sm flex items-center gap-2">
-          🔬 Internal State — Step {currentStep + 1} / {steps.length}
+          🔬 Ichki holat — Bosqich {currentStep + 1} / {steps.length}
         </h4>
         <div className="flex items-center gap-2">
           <button

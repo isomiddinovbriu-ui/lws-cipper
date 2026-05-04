@@ -22,6 +22,8 @@ export interface CryptoRequest {
   nonce: string;        // hex
   aad?: string;         // hex, for AEAD algorithms
   captureSteps?: boolean;
+  originalFilename?: string;
+  originalMimeType?: string;
 }
 
 export interface CryptoResponse {
@@ -134,6 +136,8 @@ export async function encryptData(req: CryptoRequest): Promise<CryptoResponse> {
     tag: result.tag,
     timeTaken,
     throughput,
+    originalFilename: req.originalFilename,
+    originalMimeType: req.originalMimeType,
   });
 
   return {

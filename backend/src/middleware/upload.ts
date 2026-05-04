@@ -43,7 +43,7 @@ export const uploadMiddleware = multer({
 export const uploadResultFile = multer({
   storage,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB for result TXT files
+    fileSize: 15 * 1024 * 1024, // 5MB for result TXT files
     files: 1,
   },
   fileFilter: (_req, file, cb) => {

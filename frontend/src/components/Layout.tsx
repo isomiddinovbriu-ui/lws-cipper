@@ -8,11 +8,11 @@ interface LayoutProps {
 }
 
 const navItems = [
-  { to: '/', label: 'Home', icon: '🏠' },
-  { to: '/encrypt', label: 'Encrypt', icon: '🔒' },
-  { to: '/decrypt', label: 'Decrypt', icon: '🔓' },
-  { to: '/benchmark', label: 'Benchmark', icon: '📊' },
-  { to: '/algorithms', label: 'Algorithms', icon: '🧬' },
+  { to: '/', label: "Bosh sahifa", icon: '🏠' },
+  { to: '/encrypt', label: 'Shifrlash', icon: '🔒' },
+  { to: '/decrypt', label: "Deshifrlash", icon: '🔓' },
+  { to: '/benchmark', label: "Ishlash sinovlari", icon: '📊' },
+  { to: '/algorithms', label: 'Algoritmlar', icon: '🧬' },
 ];
 
 export default function Layout({ children }: LayoutProps) {
@@ -72,7 +72,7 @@ export default function Layout({ children }: LayoutProps) {
                   ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
                   : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
               )}
-              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={isDark ? "Yorug' rejimga o'tish" : "Qorong'u rejimga o'tish"}
             >
               {isDark ? '☀️' : '🌙'}
             </button>
@@ -109,7 +109,7 @@ export default function Layout({ children }: LayoutProps) {
         'border-t mt-16 py-8 text-center text-sm',
         isDark ? 'border-slate-700/50 text-slate-500' : 'border-slate-200 text-slate-400'
       )}>
-        <p>CryptoPlatform — Lightweight Cipher Analysis Suite</p>
+        <p>CryptoPlatform — Yengil shifrlar tahlili platformasi</p>
         <p className="mt-1 text-xs">Trivium · Grain-128AEAD · MICKEY-v2 · ChaCha20 · Ascon-AEAD128</p>
       </footer>
     </div>

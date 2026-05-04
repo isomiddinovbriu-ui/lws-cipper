@@ -3,48 +3,48 @@ import { Link } from 'react-router-dom';
 const features = [
   {
     icon: '🔒',
-    title: 'Multi-Algorithm Encryption',
-    desc: 'Encrypt text and files using 5 lightweight ciphers simultaneously. Compare outputs side by side.',
+    title: "Ko'p algoritm bilan shifrlash",
+    desc: "Matn va fayllarni 5 ta yengil shifrdan bir yoki bir nechta yordamida shifrlang. Natijalarni yonma-yon taqqoslang.",
     color: 'from-primary-500 to-primary-700',
   },
   {
     icon: '🔓',
-    title: 'Decryption & Verification',
-    desc: 'Decrypt ciphertext with AEAD authentication tag verification for Grain-128AEAD and Ascon.',
+    title: "Deshifrlash va tekshirish",
+    desc: "Grain-128AEAD va Ascon uchun AEAD autentifikatsiya tegini tekshirish bilan deshifrlash.",
     color: 'from-emerald-500 to-emerald-700',
   },
   {
     icon: '📊',
-    title: 'Performance Benchmarks',
-    desc: 'Measure throughput, latency, and memory usage. Visual charts with comparison radar.',
+    title: "Ishlash sinovlari",
+    desc: "O'tkazuvchanlik, kechikish va xotira sarfini o'lchang. Vizual grafiklar va radar taqqoslash.",
     color: 'from-accent-500 to-accent-700',
   },
   {
     icon: '🔬',
-    title: 'Step-by-Step Visualization',
-    desc: 'Inspect internal cipher state changes: shift registers, quarter rounds, permutation steps.',
+    title: "Bosqichma-bosqich vizualizatsiya",
+    desc: "Ichki holat o'zgarishlarini ko'ring: shift registrlar, quarter-round, permutatsiya bosqichlari.",
     color: 'from-amber-500 to-amber-700',
   },
   {
     icon: '💾',
-    title: 'Export Everything',
-    desc: 'Download results as TXT reports, JSON, CSV. Save encrypted files as .enc binaries.',
+    title: "Eksport qilish",
+    desc: "Natijalarni TXT, JSON, CSV sifatida yuklab oling. Shifrlangan fayllarni .enc sifatida saqlang.",
     color: 'from-rose-500 to-rose-700',
   },
   {
     icon: '🔐',
-    title: 'AEAD Authentication',
-    desc: 'Full Authenticated Encryption with Associated Data for Grain-128AEAD and Ascon-AEAD128.',
+    title: "AEAD autentifikatsiya",
+    desc: "Grain-128AEAD va Ascon-AEAD128 uchun AAD bilan to'liq autentifikatsiyalangan shifrlash.",
     color: 'from-indigo-500 to-indigo-700',
   },
 ];
 
 const algorithms = [
-  { name: 'Trivium', badge: 'eSTREAM', color: 'badge-blue', desc: '80-bit key · 288-bit state' },
-  { name: 'Grain-128AEAD', badge: 'NIST LWC', color: 'badge-green', desc: '128-bit key · LFSR+NFSR' },
-  { name: 'MICKEY-v2', badge: 'eSTREAM', color: 'badge-blue', desc: '80-bit key · Irregular clocking' },
-  { name: 'ChaCha20', badge: 'RFC 7539', color: 'badge-amber', desc: '256-bit key · ARX design' },
-  { name: 'Ascon-AEAD128', badge: 'NIST Standard', color: 'badge-purple', desc: '128-bit key · Sponge AEAD' },
+  { name: 'Trivium', badge: 'eSTREAM', color: 'badge-blue', desc: "80-bit kalit · 288-bit holat" },
+  { name: 'Grain-128AEAD', badge: 'NIST LWC', color: 'badge-green', desc: "128-bit kalit · LFSR+NFSR" },
+  { name: 'MICKEY-v2', badge: 'eSTREAM', color: 'badge-blue', desc: "80-bit kalit · Noqonuniy soatlash" },
+  { name: 'ChaCha20', badge: 'RFC 7539', color: 'badge-amber', desc: '256-bit kalit · ARX dizayni' },
+  { name: 'Ascon-AEAD128', badge: 'NIST Standard', color: 'badge-purple', desc: '128-bit kalit · Sponge AEAD' },
 ];
 
 export default function HomePage() {
@@ -54,29 +54,29 @@ export default function HomePage() {
       <div className="text-center py-12">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-500/10 border border-primary-500/30 text-primary-300 text-sm font-medium mb-8">
           <span className="w-2 h-2 rounded-full bg-primary-400 animate-pulse-slow"></span>
-          Production-Ready Cryptographic Analysis Platform
+          Ishlab chiqarishga tayyor kriptografik tahlil platformasi
         </div>
 
         <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
-          <span className="text-gradient">Lightweight Cipher</span>
+          <span className="text-gradient">Yengil shifrlar</span>
           <br />
-          <span className="text-slate-100">Analysis Suite</span>
+          <span className="text-slate-100">Tahlil to'plami</span>
         </h1>
 
         <p className="text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-          Encrypt, decrypt, and benchmark 5 NIST/eSTREAM lightweight cryptographic algorithms.
-          Visualize internal state and compare performance metrics in real time.
+          5 ta NIST/eSTREAM yengil kriptografik algoritmlarni shifrlash, deshifrlash va ish faoliyatini sinovdan o'tkazing.
+          Ichki holatni vizualizatsiya qiling va ishlash metrikalarini real vaqtda taqqoslang.
         </p>
 
         <div className="flex flex-wrap justify-center gap-4">
           <Link to="/encrypt" className="btn-primary text-base px-8 py-3">
-            🔒 Start Encrypting
+            🔒 Shifrlashni boshlash
           </Link>
           <Link to="/benchmark" className="btn-secondary text-base px-8 py-3">
-            📊 Run Benchmarks
+            📊 Sinovlarni ishga tushur
           </Link>
           <Link to="/algorithms" className="btn-ghost text-base px-8 py-3">
-            🧬 View Algorithms →
+            🧬 Algoritmlarni ko'rish →
           </Link>
         </div>
       </div>
@@ -100,7 +100,7 @@ export default function HomePage() {
       {/* Features Grid */}
       <div>
         <h2 className="section-title mb-8 justify-center text-2xl">
-          <span>✨</span> Platform Features
+          <span>✨</span> Platforma xususiyatlari
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {features.map(feature => (
@@ -117,12 +117,12 @@ export default function HomePage() {
 
       {/* Quick start */}
       <div className="card border-primary-500/30 bg-gradient-to-br from-dark-800 to-dark-900">
-        <h2 className="section-title mb-6">🚀 Quick Start</h2>
+        <h2 className="section-title mb-6">🚀 Tez boshlash</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
-            { step: '01', title: 'Choose Input', desc: 'Type text or drop a file (up to 10 MB). Images, PDFs, videos all supported.' },
-            { step: '02', title: 'Configure Keys', desc: 'Enter hex key and nonce. Platform auto-validates lengths per algorithm.' },
-            { step: '03', title: 'Encrypt & Analyze', desc: 'See ciphertext, internal state, performance metrics, and download results.' },
+            { step: '01', title: "Kirishni tanlang", desc: "Matn kiriting yoki faylni tashlang (10 MB gacha). Rasmlar, PDF, video qo'llab-quvvatlanadi." },
+            { step: '02', title: "Kalitlarni sozlash", desc: "Hex formatdagi kalit va nonce kiriting. Platforma algoritm bo'yicha uzunlikni avtomatik tekshiradi." },
+            { step: '03', title: "Shifrlash va tahlil qilish", desc: "Shifrlangan matn, ichki holat, ishlash metrikalarini ko'ring va natijalarni yuklab oling." },
           ].map(item => (
             <div key={item.step} className="flex gap-4">
               <div className="text-4xl font-bold text-primary-500/30 font-mono shrink-0">{item.step}</div>

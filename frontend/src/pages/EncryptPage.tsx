@@ -15,6 +15,15 @@ const DEFAULT_PARAMS: CryptoParams = {
   aad: '',
 };
 
+// Key/nonce requirements (bytes) for validation
+const KEY_REQUIREMENTS: Record<string, { keyBytes: number; nonceBytes: number }> = {
+  trivium: { keyBytes: 10, nonceBytes: 10 },
+  grain128aead: { keyBytes: 16, nonceBytes: 12 },
+  mickey: { keyBytes: 10, nonceBytes: 10 },
+  chacha20: { keyBytes: 32, nonceBytes: 12 },
+  ascon: { keyBytes: 16, nonceBytes: 16 },
+};
+
 export default function EncryptPage() {
   const [inputMode, setInputMode] = useState<InputMode>('text');
   const [text, setText] = useState('');
@@ -28,7 +37,7 @@ export default function EncryptPage() {
   const onDrop = useCallback((accepted: File[]) => {
     if (accepted[0]) {
       setFile(accepted[0]);
-      toast.success(`File loaded: ${accepted[0].name} (${(accepted[0].size / 1024).toFixed(1)} KB)`);
+      toast.success(`Fayl yuklandi: ${accepted[0].name} (${(accepted[0].size / 1024).toFixed(1)} KB)`);
     }
   }, []);
 
@@ -37,30 +46,54 @@ export default function EncryptPage() {
     maxSize: 10 * 1024 * 1024,
     multiple: false,
     onDropRejected: ([rejection]) => {
-      toast.error(rejection.errors[0]?.message ?? 'File rejected');
+      toast.error(rejection.errors[0]?.message ?? "Fayl rad etildi");
     },
   });
 
   const handleEncrypt = async () => {
     if (!params.key || !params.nonce) {
-      toast.error('Please provide key and nonce');
+      toast.error("Iltimos, kalit va nonce kiriting");
       return;
     }
 
     if (inputMode === 'text' && !text.trim()) {
-      toast.error('Please enter text to encrypt');
+      toast.error("Iltimos, shifrlash uchun matn kiriting");
       return;
     }
     if (inputMode === 'file' && !file) {
-      toast.error('Please select a file to encrypt');
+      toast.error("Iltimos, shifrlash uchun fayl tanlang");
       return;
     }
+
+    // Validate key/nonce lengths for single-algorithm flows (prevents backend errors for Ascon etc.)
+    const validateForAlgorithm = (alg?: string) => {
+      if (!alg) return true;
+      const req = KEY_REQUIREMENTS[alg];
+      if (!req) return true;
+      const keyClean = params.key.replace(/\s+/g, '');
+      const nonceClean = params.nonce.replace(/\s+/g, '');
+      if (keyClean.length !== req.keyBytes * 2) {
+        toast.error(`${alg} uchun kalit ${req.keyBytes * 8}-bit (${req.keyBytes * 2} hex belgisi) bo'lishi kerak`);
+        return false;
+      }
+      if (nonceClean.length !== req.nonceBytes * 2) {
+        toast.error(`${alg} uchun nonce ${req.nonceBytes * 8}-bit (${req.nonceBytes * 2} hex belgisi) bo'lishi kerak`);
+        return false;
+      }
+      return true;
+    };
 
     setLoading(true);
     setResults([]);
 
     try {
       if (inputMode === 'text') {
+        // If a single algorithm is selected, validate lengths
+        if (algorithms.length === 1) {
+          const ok = validateForAlgorithm(algorithms[0]);
+          if (!ok) return;
+        }
+
         const res = await encryptText({
           text,
           algorithms: algorithms.length > 0 ? algorithms : undefined,
@@ -70,10 +103,12 @@ export default function EncryptPage() {
           captureSteps,
         });
         setResults(res.data);
-        toast.success(`Encrypted with ${res.data.length} algorithm(s)`);
+        toast.success(`Shifrlash yakunlandi: ${res.data.length} ta algoritm`);
       } else if (file) {
         // For file: use single algorithm or default to chacha20
         const algo = algorithms.length === 1 ? algorithms[0] : 'chacha20';
+        // Validate key/nonce for chosen algorithm
+        if (!validateForAlgorithm(algo)) return;
         const formData = new FormData();
         formData.append('file', file);
         formData.append('algorithm', algo);
@@ -83,7 +118,7 @@ export default function EncryptPage() {
         formData.append('captureSteps', String(captureSteps));
         const res = await encryptFile(formData);
         setResults([res.data]);
-        toast.success(`File encrypted: ${res.data.originalFilename}`);
+        toast.success(`Fayl shifrlandi: ${res.data.originalFilename}`);
       }
     } catch (err) {
       toast.error((err as Error).message);
@@ -95,8 +130,8 @@ export default function EncryptPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-slate-100 mb-2">🔒 Encrypt</h1>
-        <p className="text-slate-400">Encrypt text or files using one or multiple lightweight ciphers</p>
+        <h1 className="text-3xl font-bold text-slate-100 mb-2">🔒 Shifrlash</h1>
+        <p className="text-slate-400">Matn yoki fayllarni bir yoki bir nechta yengil shifrdan foydalanib shifrlang</p>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
@@ -104,7 +139,7 @@ export default function EncryptPage() {
         <div className="xl:col-span-1 space-y-6">
           {/* Input Mode */}
           <div className="card">
-            <h2 className="section-title mb-4 text-base">📥 Input</h2>
+            <h2 className="section-title mb-4 text-base">📥 Kirish</h2>
             <div className="flex gap-2 mb-4">
               {(['text', 'file'] as const).map(mode => (
                 <button
@@ -112,7 +147,7 @@ export default function EncryptPage() {
                   onClick={() => setInputMode(mode)}
                   className={inputMode === mode ? 'tab-active' : 'tab-inactive'}
                 >
-                  {mode === 'text' ? '📝 Text' : '📁 File'}
+                    {mode === 'text' ? '📝 Matn' : '📁 Fayl'}
                 </button>
               ))}
             </div>
@@ -122,7 +157,7 @@ export default function EncryptPage() {
                 value={text}
                 onChange={e => setText(e.target.value)}
                 className="input-field min-h-[140px] resize-y"
-                placeholder="Enter plaintext to encrypt..."
+                placeholder="Shifrlash uchun matnni kiriting..."
               />
             ) : (
               <div
@@ -135,7 +170,7 @@ export default function EncryptPage() {
                 )}
               >
                 <input {...getInputProps()} />
-                {file ? (
+                    {file ? (
                   <div>
                     <div className="text-4xl mb-2">📄</div>
                     <div className="text-slate-200 font-medium">{file.name}</div>
@@ -144,14 +179,14 @@ export default function EncryptPage() {
                       onClick={e => { e.stopPropagation(); setFile(null); }}
                       className="text-red-400 text-xs mt-2 hover:text-red-300"
                     >
-                      Remove
+                      O'chirish
                     </button>
                   </div>
                 ) : (
                   <div>
                     <div className="text-5xl mb-3">📂</div>
-                    <p className="text-slate-400">Drop a file here or click to browse</p>
-                    <p className="text-slate-600 text-sm mt-1">Max 10 MB · Images, PDFs, text, video</p>
+                    <p className="text-slate-400">Bu yerga faylni tashlang yoki ko'rish uchun bosing</p>
+                    <p className="text-slate-600 text-sm mt-1">Maks 10 MB · Rasmlar, PDF, matn, video</p>
                   </div>
                 )}
               </div>
@@ -170,7 +205,7 @@ export default function EncryptPage() {
 
           {/* Options */}
           <div className="card">
-            <h2 className="section-title mb-3 text-base">⚙️ Options</h2>
+            <h2 className="section-title mb-3 text-base">⚙️ Sozlamalar</h2>
             <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
@@ -179,8 +214,8 @@ export default function EncryptPage() {
                 className="w-4 h-4 accent-primary-500"
               />
               <div>
-                <div className="text-slate-300 text-sm font-medium">Capture internal steps</div>
-                <div className="text-slate-500 text-xs">Enables step-by-step visualization (slower for large inputs)</div>
+                <div className="text-slate-300 text-sm font-medium">Ichki bosqichlarni yozib olish</div>
+                <div className="text-slate-500 text-xs">Bosqichma-bosqich vizualizatsiyani yoqadi (katta fayllar uchun sekinroq)</div>
               </div>
             </label>
           </div>
@@ -194,10 +229,10 @@ export default function EncryptPage() {
             {loading ? (
               <>
                 <span className="animate-spin">⟳</span>
-                Encrypting...
+                Shifrlanmoqda...
               </>
             ) : (
-              <>🔒 Encrypt</>
+              <>🔒 Shifrlash</>
             )}
           </button>
         </div>
@@ -207,22 +242,22 @@ export default function EncryptPage() {
           {results.length === 0 && !loading ? (
             <div className="card flex flex-col items-center justify-center py-20 text-center">
               <div className="text-6xl mb-4">🔐</div>
-              <h3 className="text-xl font-semibold text-slate-300 mb-2">No Results Yet</h3>
+              <h3 className="text-xl font-semibold text-slate-300 mb-2">Hozircha natija yo'q</h3>
               <p className="text-slate-500 max-w-sm">
-                Configure your input, select algorithms, and provide a key/nonce to start encrypting.
+                Kiritishni sozlang, algoritmlarni tanlang va shifrlashni boshlash uchun kalit/nonce kiriting.
               </p>
             </div>
           ) : loading ? (
             <div className="card flex flex-col items-center justify-center py-20">
               <div className="text-6xl mb-4 animate-pulse-slow">⚙️</div>
-              <div className="text-slate-300 font-medium">Encrypting...</div>
-              <div className="text-slate-500 text-sm mt-1">Running algorithms in parallel</div>
+              <div className="text-slate-300 font-medium">Shifrlanmoqda...</div>
+              <div className="text-slate-500 text-sm mt-1">Algoritmlar parallel ravishda ishlamoqda</div>
             </div>
           ) : (
             <>
               <div className="flex items-center justify-between">
                 <h2 className="section-title text-xl">
-                  Results ({results.length} algorithm{results.length !== 1 ? 's' : ''})
+                  Natijalar ({results.length} ta algoritm)
                 </h2>
               </div>
               {results.map((r, i) => (

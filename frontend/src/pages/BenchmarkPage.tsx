@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import toast from 'react-hot-toast';
 import html2canvas from 'html2canvas';
-import { runBenchmark, exportCsv, exportJson, BenchmarkRun, BenchmarkSuite } from '../services/api';
+import { runBenchmark, exportCsv, exportJson, benchmarkFile, BenchmarkRun, BenchmarkSuite } from '../services/api';
 import clsx from 'clsx';
 
 const ALGO_COLORS: Record<string, string> = {
@@ -30,7 +30,9 @@ export default function BenchmarkPage() {
   const [loading, setLoading] = useState(false);
   const [selectedSize, setSelectedSize] = useState<number>(65536);
   const [chartType, setChartType] = useState<ChartType>('bar-throughput');
-  const [selectedAlgos] = useState<string[]>([]);
+  const [selectedAlgos, setSelectedAlgos] = useState<string[]>(['trivium', 'grain128aead', 'mickey', 'chacha20', 'ascon']);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
 
   const handleRunBenchmark = async () => {
@@ -40,11 +42,98 @@ export default function BenchmarkPage() {
         dataSizes: [1024, 16384, 65536, 262144],
       });
       setSuite(res.data);
-      toast.success(`Benchmark complete! Fastest: ${res.data.fastest}`);
+      toast.success(`Benchmark tugadi! Eng tezkor: ${res.data.fastest}`);
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] ?? null;
+    setUploadFile(f);
+  };
+
+  const toggleAlgo = (algo: string) => {
+    setSelectedAlgos(prev => prev.includes(algo) ? prev.filter(a => a !== algo) : [...prev, algo]);
+  };
+
+  const handleUploadBenchmark = async () => {
+    if (!uploadFile) {
+      toast.error('Iltimos, benchmark uchun fayl tanlang');
+      return;
+    }
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      if (selectedAlgos.length > 0) formData.append('algorithms', JSON.stringify(selectedAlgos));
+
+      const res = await benchmarkFile(formData);
+      const runs: BenchmarkRun[] = res.data;
+      // convert to suite-like shape for UI
+      const dataSizes = Array.from(new Set(runs.map(r => r.dataSize)));
+      const largestSize = Math.max(...dataSizes);
+      const largestRuns = runs.filter(r => r.dataSize === largestSize);
+      const fastest = largestRuns.reduce((best, r) => r.throughputEnc > best.throughputEnc ? r : best).algorithm;
+      const slowest = largestRuns.reduce((worst, r) => r.throughputEnc < worst.throughputEnc ? r : worst).algorithm;
+
+      setSuite({ runs, dataSizes, timestamp: new Date().toISOString(), fastest, slowest });
+      setSelectedSize(dataSizes[0] ?? uploadFile.size);
+      setUploadedFileName(uploadFile.name);
+      toast.success(`Fayl uchun benchmark tugadi: ${uploadFile.name}`);
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Generate same test payload as backend (pattern: i & 0xff)
+  const generateTestData = (size: number): Uint8Array => {
+    const data = new Uint8Array(size);
+    for (let i = 0; i < size; i++) data[i] = i & 0xff;
+    return data;
+  };
+
+  const downloadTestPayload = (size: number) => {
+    const data = generateTestData(size);
+    const arrayBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
+    const blob = new Blob([arrayBuffer], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `benchmark_payload_${size}B.bin`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const previewUploadedFile = async () => {
+    if (!uploadFile) return;
+    const file = uploadFile;
+    if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+      const url = URL.createObjectURL(file);
+      window.open(url, '_blank');
+      // do not revoke immediately to allow user to view
+    } else if (file.type.startsWith('text/') || file.name.endsWith('.txt') || file.type === 'application/json') {
+      const text = await file.text();
+      const w = window.open('', '_blank');
+      if (w) {
+        const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        w.document.body.style.background = '#0f172a';
+        w.document.body.style.color = '#e2e8f0';
+        w.document.title = file.name;
+        w.document.body.innerHTML = `<pre style="white-space:pre-wrap;word-break:break-word;font-family:monospace">${esc(text)}</pre>`;
+      }
+    } else {
+      // fallback to download
+      const url = URL.createObjectURL(file);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name;
+      a.click();
+      URL.revokeObjectURL(url);
     }
   };
 
@@ -91,9 +180,9 @@ export default function BenchmarkPage() {
       a.href = url;
       a.download = 'benchmark_chart.png';
       a.click();
-      toast.success('Chart downloaded!');
+      toast.success("Grafik yuklandi!");
     } catch {
-      toast.error('Failed to download chart');
+      toast.error("Grafikni yuklab bo'lmadi");
     }
   };
 
@@ -102,8 +191,8 @@ export default function BenchmarkPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-slate-100 mb-2">📊 Performance Benchmarks</h1>
-        <p className="text-slate-400">Compare encryption speed, throughput, and memory usage across all algorithms</p>
+        <h1 className="text-3xl font-bold text-slate-100 mb-2">📊 Ishlash sinovlari</h1>
+        <p className="text-slate-400">Barcha algoritmlar bo'yicha shifrlash tezligi, o'tkazuvchanlik va xotira sarfini solishtiring</p>
       </div>
 
       {/* Controls */}
@@ -113,13 +202,23 @@ export default function BenchmarkPage() {
           disabled={loading}
           className="btn-primary"
         >
-          {loading ? <><span className="animate-spin">⟳</span> Running...</> : '▶ Run Benchmark'}
+          {loading ? <><span className="animate-spin">⟳</span> Ishlamoqda...</> : '▶ Sinovlarni ishga tushur'}
         </button>
+        <div className="flex items-center gap-2">
+          <input type="file" accept="*/*" onChange={handleFileChange} />
+          <button onClick={handleUploadBenchmark} disabled={loading} className="btn-secondary">
+            Upload & Run
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          {(['trivium','grain128aead','mickey','chacha20','ascon'] as const).map(a => (
+            <button key={a} onClick={() => toggleAlgo(a)} className={selectedAlgos.includes(a) ? 'tab-active text-xs' : 'tab-inactive text-xs'}>{a}</button>
+          ))}
+        </div>
         {suite && (
           <>
-            <span className="text-slate-500 text-sm">
-              Completed: {new Date(suite.timestamp).toLocaleTimeString()}
-            </span>
+            <span className="text-slate-500 text-sm">Completed: {new Date(suite.timestamp).toLocaleTimeString()}</span>
+            {uploadedFileName && <span className="text-slate-400 text-sm">File: {uploadedFileName}</span>}
             <div className="ml-auto flex gap-2">
               <button
                 onClick={() => exportCsv(suite.runs, 'benchmark_results')}
@@ -146,10 +245,10 @@ export default function BenchmarkPage() {
           {/* Summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { label: 'Fastest', value: suite.fastest, icon: '🚀', color: 'text-emerald-300' },
-              { label: 'Slowest', value: suite.slowest, icon: '🐢', color: 'text-amber-300' },
-              { label: 'Best Security', value: 'ascon / chacha20', icon: '🔐', color: 'text-blue-300' },
-              { label: 'Best for IoT', value: 'trivium', icon: '📡', color: 'text-violet-300' },
+              { label: "Eng tez", value: suite.fastest, icon: '🚀', color: 'text-emerald-300' },
+              { label: "Eng sekin", value: suite.slowest, icon: '🐢', color: 'text-amber-300' },
+              { label: "Eng yaxshi xavfsizlik", value: 'ascon / chacha20', icon: '🔐', color: 'text-blue-300' },
+              { label: "IoT uchun eng mos", value: 'trivium', icon: '📡', color: 'text-violet-300' },
             ].map(item => (
               <div key={item.label} className="card text-center">
                 <div className="text-3xl mb-2">{item.icon}</div>
@@ -161,7 +260,7 @@ export default function BenchmarkPage() {
 
           {/* Data size selector */}
           <div className="flex items-center gap-3">
-            <span className="text-slate-400 text-sm">Data size:</span>
+            <span className="text-slate-400 text-sm">Ma'lumot hajmi:</span>
             {suite.dataSizes.map(size => (
               <button
                 key={size}
@@ -175,10 +274,10 @@ export default function BenchmarkPage() {
 
           {/* Chart type tabs */}
           <div className="flex items-center gap-2">
-            {([
-              { id: 'bar-throughput', label: '📊 Throughput' },
-              { id: 'bar-time', label: '⏱ Time' },
-              { id: 'line-trend', label: '📈 Trend' },
+              {([
+              { id: 'bar-throughput', label: '📊 O\'tkazuvchanlik' },
+              { id: 'bar-time', label: '⏱ Vaqt' },
+              { id: 'line-trend', label: '📈 Tendensiya' },
               { id: 'radar', label: '🕸 Radar' },
             ] as const).map(c => (
               <button
@@ -240,13 +339,47 @@ export default function BenchmarkPage() {
             </ResponsiveContainer>
           </div>
 
+            {/* Files tested panel */}
+            <div className="card">
+              <h3 className="section-title mb-3">📁 Sinov qilingan fayllar</h3>
+              {uploadedFileName ? (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">{uploadedFileName}</div>
+                    <div className="text-slate-500 text-xs">Fayl siz tomonidan yuklangan</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={previewUploadedFile} className="btn-secondary text-sm">👁 Ko'rish</button>
+                    <button onClick={() => {
+                      if (!uploadFile) return; const url = URL.createObjectURL(uploadFile); const a = document.createElement('a'); a.href = url; a.download = uploadFile.name; a.click(); URL.revokeObjectURL(url);
+                    }} className="btn-secondary text-sm">⬇ Yuklab olish</button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="text-slate-400 text-sm mb-2">Built-in synthetic payloads used for full-suite benchmarking:</div>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.keys(DATA_SIZE_LABELS).map(k => {
+                      const size = Number(k);
+                      return (
+                        <div key={k} className="p-2 bg-dark-900/60 rounded flex items-center gap-3">
+                          <div className="text-slate-200 font-mono">{DATA_SIZE_LABELS[size]}</div>
+                          <button onClick={() => downloadTestPayload(size)} className="text-xs btn-secondary">⬇ Yuklab olish</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
           {/* Detailed table */}
           <div className="card overflow-x-auto">
-            <h2 className="section-title mb-4">📋 Detailed Results — {DATA_SIZE_LABELS[selectedSize]}</h2>
+            <h2 className="section-title mb-4">📋 Batafsil natijalar — {DATA_SIZE_LABELS[selectedSize]}</h2>
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-700/50">
-                  {['Algorithm', 'Enc Time', 'Dec Time', 'Enc Throughput', 'Dec Throughput', 'Memory', 'CPU%'].map(h => (
+                  {['Algoritm', "Shifrlash vaqti", "Deshifrlash vaqti", "Shifrlash o'tkazuvchanligi", "Deshifrlash o'tkazuvchanligi", 'Xotira', 'CPU%'].map(h => (
                     <th key={h} className="text-left py-3 px-3 text-slate-400 font-medium">{h}</th>
                   ))}
                 </tr>
@@ -262,7 +395,7 @@ export default function BenchmarkPage() {
                       <td className="py-3 px-3 font-medium text-slate-200 capitalize flex items-center gap-2">
                         <span className="w-2.5 h-2.5 rounded-full" style={{ background: ALGO_COLORS[run.algorithm] }}></span>
                         {run.algorithm}
-                        {i === 0 && <span className="badge-green text-xs">Fastest</span>}
+                        {i === 0 && <span className="badge-green text-xs">Eng tez</span>}
                       </td>
                       <td className="py-3 px-3 font-mono text-slate-300">{run.encryptTime.toFixed(3)} ms</td>
                       <td className="py-3 px-3 font-mono text-slate-300">{run.decryptTime.toFixed(3)} ms</td>
@@ -279,13 +412,12 @@ export default function BenchmarkPage() {
       ) : (
         <div className="card flex flex-col items-center justify-center py-24 text-center">
           <div className="text-6xl mb-4">📊</div>
-          <h3 className="text-xl font-semibold text-slate-300 mb-2">No Benchmark Data</h3>
+          <h3 className="text-xl font-semibold text-slate-300 mb-2">Benchmark Data yo'q</h3>
           <p className="text-slate-500 max-w-md mb-6">
-            Click "Run Benchmark" to test all 5 algorithms across 4 data sizes (1KB, 16KB, 64KB, 256KB).
-            Results include throughput, latency, and memory profiling.
+            4 ta ma'lumot o'lchamida (1KB, 16KB, 64KB, 256KB) barcha 5 ta algoritmni sinab ko'rish uchun "Benchmarkni ishga tushirish" tugmasini bosing. Natijalar o'tkazish qobiliyati, kechikish va xotira profilini o'z ichiga oladi.
           </p>
           <button onClick={handleRunBenchmark} disabled={loading} className="btn-primary px-8">
-            {loading ? <><span className="animate-spin">⟳</span> Running...</> : '▶ Run Benchmark Now'}
+            {loading ? <><span className="animate-spin">⟳</span> Running...</> : '▶ Benchmarkni hozir ishga tushirish'}
           </button>
         </div>
       )}

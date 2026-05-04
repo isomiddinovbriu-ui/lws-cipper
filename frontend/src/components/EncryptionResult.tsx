@@ -19,7 +19,7 @@ const ALGO_COLORS: Record<string, string> = {
 };
 
 function copyToClipboard(text: string, label: string) {
-  navigator.clipboard.writeText(text).then(() => toast.success(`${label} copied!`));
+  navigator.clipboard.writeText(text).then(() => toast.success(`${label} nusxalandi!`));
 }
 
 export default function EncryptionResult({ result, index }: Props) {
@@ -60,10 +60,10 @@ export default function EncryptionResult({ result, index }: Props) {
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { label: 'Time', value: `${result.timeTaken.toFixed(3)} ms`, icon: '⏱' },
-              { label: 'Throughput', value: `${result.throughput.toFixed(3)} MB/s`, icon: '🚀' },
-              { label: 'Ciphertext', value: `${result.ciphertext.length / 2} bytes`, icon: '📦' },
-              { label: 'Auth Tag', value: result.tag ? '✅ Present' : '—', icon: '🔐' },
+              { label: "Vaqt", value: `${result.timeTaken.toFixed(3)} ms`, icon: '⏱' },
+              { label: "O'tkazish tezligi", value: `${result.throughput.toFixed(3)} MB/s`, icon: '🚀' },
+              { label: 'Shifrlangan matn', value: `${result.ciphertext.length / 2} bytes`, icon: '📦' },
+              { label: 'Autentifikatsiya tegi', value: result.tag ? '✅ Mavjud' : '—', icon: '🔐' },
             ].map(stat => (
               <div key={stat.label} className="bg-dark-800/60 border border-slate-700/30 rounded-lg p-3 text-center">
                 <div className="text-lg mb-1">{stat.icon}</div>
@@ -76,9 +76,9 @@ export default function EncryptionResult({ result, index }: Props) {
           {/* Ciphertext */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="label mb-0">Ciphertext (Hex)</label>
-              <button onClick={() => copyToClipboard(result.ciphertext, 'Ciphertext')} className="btn-ghost text-xs py-1">
-                📋 Copy
+              <label className="label mb-0">Shifrlangan matn (Hex)</label>
+              <button onClick={() => copyToClipboard(result.ciphertext, "Shifrlangan matn")} className="btn-ghost text-xs py-1">
+                📋 Nusxalash
               </button>
             </div>
             <div className="hex-display max-h-32 overflow-y-auto">{result.ciphertext}</div>
@@ -88,9 +88,9 @@ export default function EncryptionResult({ result, index }: Props) {
           {result.tag && (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="label mb-0">Authentication Tag</label>
-                <button onClick={() => copyToClipboard(result.tag!, 'Tag')} className="btn-ghost text-xs py-1">
-                  📋 Copy
+                <label className="label mb-0">Autentifikatsiya tegi</label>
+                <button onClick={() => copyToClipboard(result.tag!, "Teg")} className="btn-ghost text-xs py-1">
+                  📋 Nusxalash
                 </button>
               </div>
               <div className="hex-display">{result.tag}</div>
@@ -112,7 +112,7 @@ export default function EncryptionResult({ result, index }: Props) {
                 onClick={() => setShowSteps(!showSteps)}
                 className="btn-ghost text-sm w-full justify-center border border-slate-700/50"
               >
-                {showSteps ? '▲ Hide' : '▼ Show'} Step-by-Step Internal State ({result.steps.length} steps captured)
+                {showSteps ? '▲ Yashirish' : '▼ Ko\'rsatish'} Bosqichma-bosqich ichki holat ({result.steps.length} qadam yozildi)
               </button>
               {showSteps && <StepVisualization steps={result.steps} algorithm={result.algorithm} />}
             </div>
@@ -124,25 +124,25 @@ export default function EncryptionResult({ result, index }: Props) {
               onClick={() => downloadReport(result.txtReport, `${result.algorithm}_result`)}
               className="btn-secondary text-sm"
             >
-              📄 Download TXT
+              📄 TXT-ni yuklab olish
             </button>
             <button
               onClick={() => downloadEncryptedFile(result.ciphertext, `${result.algorithm}_encrypted`)}
               className="btn-secondary text-sm"
             >
-              💾 Download .enc
+              💾 .enc faylini yuklab olish
             </button>
             <button
               onClick={() => exportJson(result, `${result.algorithm}_result`)}
               className="btn-secondary text-sm"
             >
-              📦 Export JSON
+              📦 JSON eksport
             </button>
             <button
-              onClick={() => copyToClipboard(result.txtReport, 'Report')}
+              onClick={() => copyToClipboard(result.txtReport, 'Hisobot')}
               className="btn-ghost text-sm"
             >
-              📋 Copy Report
+              📋 Hisobotni nusxalash
             </button>
           </div>
         </div>

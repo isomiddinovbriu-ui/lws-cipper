@@ -106,10 +106,12 @@ export interface DecryptPayload {
   aad?: string;
   tag?: string;
   captureSteps?: boolean;
+  originalFilename?: string;
+  originalMimeType?: string;
 }
 
-export const decryptText = (payload: DecryptPayload): Promise<{ success: boolean; data: DecryptResult }> =>
-  api.post('/decrypt', payload) as Promise<{ success: boolean; data: DecryptResult }>;
+export const decryptText = (payload: DecryptPayload): Promise<{ success: boolean; data: DecryptResult; parsedFile?: Record<string, string> }> =>
+  api.post('/decrypt', payload) as Promise<{ success: boolean; data: DecryptResult; parsedFile?: Record<string, string> }>;
 
 export const decryptFromFile = (formData: FormData): Promise<{ success: boolean; data: DecryptResult; parsedFile: Record<string, string> }> =>
   api.post('/decrypt/from-file', formData, {
@@ -118,6 +120,11 @@ export const decryptFromFile = (formData: FormData): Promise<{ success: boolean;
 
 export const runBenchmark = (payload?: { algorithms?: string[]; dataSizes?: number[] }): Promise<{ success: boolean; data: BenchmarkSuite }> =>
   api.post('/benchmark', payload ?? {}) as Promise<{ success: boolean; data: BenchmarkSuite }>;
+
+export const benchmarkFile = (formData: FormData): Promise<{ success: boolean; data: BenchmarkRun[] }> =>
+  api.post('/benchmark/file', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }) as Promise<{ success: boolean; data: BenchmarkRun[] }>;
 
 export const downloadEncryptedFile = async (ciphertextHex: string, filename: string): Promise<void> => {
   const response = await axios.post(

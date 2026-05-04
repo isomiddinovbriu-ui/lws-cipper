@@ -31,10 +31,10 @@ function generateHex(bytes: number): string {
 
 function validateHex(hex: string, expectedBytes?: number): { valid: boolean; message?: string } {
   const clean = hex.replace(/\s/g, '');
-  if (!/^[0-9a-fA-F]*$/.test(clean)) return { valid: false, message: 'Not valid hex' };
-  if (clean.length % 2 !== 0) return { valid: false, message: 'Odd length hex' };
+  if (!/^[0-9a-fA-F]*$/.test(clean)) return { valid: false, message: "Hex noto'g'ri" };
+  if (clean.length % 2 !== 0) return { valid: false, message: "Hex uzunligi noto'g'ri" };
   if (expectedBytes && clean.length / 2 !== expectedBytes) {
-    return { valid: false, message: `Expected ${expectedBytes} bytes (${expectedBytes * 2} hex chars), got ${clean.length / 2}` };
+    return { valid: false, message: `Kutilgan ${expectedBytes} bayt (${expectedBytes * 2} hex belgisi), olingan ${clean.length / 2}` };
   }
   return { valid: true };
 }
@@ -49,10 +49,10 @@ export default function CryptoInputs({ params, onChange, algorithms, showAad = t
   const getKeyHint = () => {
     if (algorithms.length === 1) {
       const req = KEY_REQUIREMENTS[algorithms[0]];
-      return req ? `${req.keyBytes * 8}-bit (${req.keyBytes * 2} hex chars)` : '';
+      return req ? `${req.keyBytes * 8}-bit (${req.keyBytes * 2} hex belgisi)` : '';
     }
-    if (algorithms.length === 0) return 'Will be auto-padded/truncated per algorithm';
-    return 'Will be auto-padded/truncated per algorithm';
+    if (algorithms.length === 0) return "Algoritmga qarab avtomatik to'ldiriladi yoki kesiladi";
+    return "Algoritmga qarab avtomatik to'ldiriladi yoki kesiladi";
   };
 
   const keyValidation = algorithms.length === 1
@@ -77,16 +77,16 @@ export default function CryptoInputs({ params, onChange, algorithms, showAad = t
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-slate-300 font-medium text-sm">Cryptographic Parameters</h3>
+        <h3 className="text-slate-300 font-medium text-sm">Kriptografik parametrlar</h3>
         <button onClick={autoFill} className="text-xs btn-ghost py-1">
-          🎲 Auto-generate
+          🎲 Avto to'ldirish
         </button>
       </div>
 
       {/* Key */}
       <div>
         <label className="label">
-          Key (Hex)
+          Kalit (Hex)
           <span className="text-slate-500 font-normal ml-2 text-xs">{getKeyHint()}</span>
         </label>
         <div className="relative">
@@ -98,7 +98,7 @@ export default function CryptoInputs({ params, onChange, algorithms, showAad = t
               'input-field pr-20',
               params.key && !keyValidation.valid ? 'border-red-500/60 focus:ring-red-500' : ''
             )}
-            placeholder="Enter hex key (e.g. 0102030405060708090a...)"
+            placeholder="Hex formatdagi kalitni kiriting (masalan 0102030405060708090a...)"
             spellCheck={false}
           />
           <button
@@ -108,7 +108,7 @@ export default function CryptoInputs({ params, onChange, algorithms, showAad = t
             }}
             className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-primary-400 hover:text-primary-300 px-2 py-1 rounded"
           >
-            Random
+            Tasodifiy
           </button>
         </div>
         {params.key && !keyValidation.valid && (
@@ -123,7 +123,7 @@ export default function CryptoInputs({ params, onChange, algorithms, showAad = t
           <span className="text-slate-500 font-normal ml-2 text-xs">
             {algorithms.length === 1 && KEY_REQUIREMENTS[algorithms[0]]
               ? `${KEY_REQUIREMENTS[algorithms[0]].nonceBytes * 8}-bit`
-              : 'algorithm-dependent'}
+              : "Algoritmga bog'liq"}
           </span>
         </label>
         <div className="relative">
@@ -135,7 +135,7 @@ export default function CryptoInputs({ params, onChange, algorithms, showAad = t
               'input-field pr-20',
               params.nonce && !nonceValidation.valid ? 'border-red-500/60 focus:ring-red-500' : ''
             )}
-            placeholder="Enter hex nonce/IV"
+            placeholder="Hex formatdagi nonce/IV kiriting"
             spellCheck={false}
           />
           <button
@@ -145,7 +145,7 @@ export default function CryptoInputs({ params, onChange, algorithms, showAad = t
             }}
             className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-primary-400 hover:text-primary-300 px-2 py-1 rounded"
           >
-            Random
+            Tasodifiy
           </button>
         </div>
         {params.nonce && !nonceValidation.valid && (
@@ -158,14 +158,14 @@ export default function CryptoInputs({ params, onChange, algorithms, showAad = t
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="label mb-0">
-              Additional Auth Data (AAD)
+              Qo'shimcha autentifikatsiya ma'lumotlari (AAD)
               <span className="badge-purple ml-2">AEAD</span>
             </label>
             <button
               onClick={() => setShowAadField(!showAadField)}
               className="text-xs text-slate-500 hover:text-slate-300"
             >
-              {showAadField ? 'Hide' : 'Show'}
+              {showAadField ? 'Yashirish' : "Ko'rsatish"}
             </button>
           </div>
           {showAadField && (
@@ -174,7 +174,7 @@ export default function CryptoInputs({ params, onChange, algorithms, showAad = t
               value={params.aad ?? ''}
               onChange={e => onChange({ ...params, aad: e.target.value })}
               className="input-field"
-              placeholder="Optional hex-encoded AAD for Grain-128AEAD and Ascon"
+              placeholder="Grain-128AEAD va Ascon uchun ixtiyoriy hex-AAD"
               spellCheck={false}
             />
           )}
@@ -184,13 +184,13 @@ export default function CryptoInputs({ params, onChange, algorithms, showAad = t
       {/* Key hint table */}
       <details className="group">
         <summary className="text-xs text-slate-500 hover:text-slate-400 cursor-pointer select-none">
-          📋 Key/Nonce size reference
+          📋 Kalit/Nonce o'lchamlari
         </summary>
         <div className="mt-2 overflow-x-auto">
           <table className="w-full text-xs text-slate-400 border-separate border-spacing-0">
             <thead>
               <tr>
-                {['Algorithm', 'Key', 'Nonce', 'Type'].map(h => (
+                {['Algoritm', 'Kalit', 'Nonce', 'Turi'].map(h => (
                   <th key={h} className="text-left py-1.5 px-2 bg-dark-950/50 border-b border-slate-700/50 font-medium text-slate-300">
                     {h}
                   </th>
@@ -199,11 +199,11 @@ export default function CryptoInputs({ params, onChange, algorithms, showAad = t
             </thead>
             <tbody>
               {[
-                ['Trivium', '80-bit (20 hex)', '80-bit (20 hex)', 'Stream'],
-                ['Grain-128AEAD', '128-bit (32 hex)', '96-bit (24 hex)', 'AEAD'],
-                ['MICKEY-v2', '80-bit (20 hex)', '80-bit (20 hex)', 'Stream'],
-                ['ChaCha20', '256-bit (64 hex)', '96-bit (24 hex)', 'Stream'],
-                ['Ascon-AEAD128', '128-bit (32 hex)', '128-bit (32 hex)', 'AEAD'],
+                  ['Trivium', '80-bit (20 hex)', '80-bit (20 hex)', "Oqim"],
+                  ['Grain-128AEAD', '128-bit (32 hex)', '96-bit (24 hex)', 'AEAD'],
+                  ['MICKEY-v2', '80-bit (20 hex)', '80-bit (20 hex)', "Oqim"],
+                  ['ChaCha20', '256-bit (64 hex)', '96-bit (24 hex)', "Oqim"],
+                  ['Ascon-AEAD128', '128-bit (32 hex)', '128-bit (32 hex)', 'AEAD'],
               ].map(([name, key, nonce, type]) => (
                 <tr key={name} className="border-b border-slate-800/50">
                   <td className="py-1.5 px-2 font-medium text-slate-300">{name}</td>
