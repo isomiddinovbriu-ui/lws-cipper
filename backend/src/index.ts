@@ -17,7 +17,7 @@ const logsDir = path.join(__dirname, '..', 'logs');
 if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
 
 const app = express();
-const PORT = parseInt(process.env.PORT ?? '3001', 10);
+const PORT = parseInt(process.env.PORT ?? '3099', 10);
 
 // Security middleware
 app.use(helmet({
