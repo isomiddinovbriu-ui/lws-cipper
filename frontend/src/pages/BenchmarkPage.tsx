@@ -267,7 +267,7 @@ export default function BenchmarkPage() {
                 onClick={() => setSelectedSize(size)}
                 className={selectedSize === size ? 'tab-active' : 'tab-inactive'}
               >
-                {DATA_SIZE_LABELS[size] ?? `${size}B`}
+                {DATA_SIZE_LABELS[size] ?? `${size}Bayt `}
               </button>
             ))}
           </div>
