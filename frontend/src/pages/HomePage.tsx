@@ -60,7 +60,9 @@ export default function HomePage() {
         <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
           <span className="text-gradient">Yengil vaznli shifrlash algoritmlar</span>
           <br />
-          <span className="text-slate-100">Tahlil to'plami</span>
+            <span className="text-slate-600 dark:text-slate-100">
+              Tahlil to'plami
+            </span>
         </h1>
 
         <p className="text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
@@ -68,17 +70,43 @@ export default function HomePage() {
           Ichki holatni vizualizatsiya qiling va ishlash metrikalarini real vaqtda taqqoslang.
         </p>
 
-        <div className="flex flex-wrap justify-center gap-4">
-          <Link to="/encrypt" className="btn-primary text-base px-8 py-3">
-            🔒 Shifrlashni boshlash
-          </Link>
-          <Link to="/benchmark" className="btn-secondary text-base px-8 py-3">
-            📊 Sinovlarni ishga tushur
-          </Link>
-          <Link to="/algorithms" className="btn-ghost text-base px-8 py-3">
-            🧬 Algoritmlarni ko'rish →
-          </Link>
-        </div>
+<div className="flex flex-wrap justify-center items-center gap-6 mt-4">
+  {/* 1. Shifrlash Tugmasi - Asosiy harakat (Primary Glow) */}
+  <Link 
+    to="/encrypt" 
+    className="group relative inline-flex items-center justify-center px-8 py-4 font-bold text-white transition-all duration-300 bg-blue-600 rounded-2xl hover:bg-blue-500 hover:scale-105 hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] active:scale-95"
+  >
+    <span className="flex items-center gap-2">
+      <span className="text-xl group-hover:rotate-12 transition-transform">🔒</span>
+      Shifrlashni boshlash
+    </span>
+  </Link>
+
+  {/* 2. Sinovlar Tugmasi - Glassmorphism (Secondary) */}
+  <Link 
+    to="/benchmark" 
+    className="group inline-flex items-center justify-center px-8 py-4 font-bold text-slate-700 dark:text-slate-200 transition-all duration-300 bg-slate-100 dark:bg-slate-800/50 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-2xl hover:bg-white dark:hover:bg-slate-800 hover:border-blue-400 dark:hover:border-blue-500 hover:scale-105 active:scale-95 shadow-sm"
+  >
+    <span className="flex items-center gap-2">
+      <span className="text-xl group-hover:animate-bounce">📊</span>
+      Sinovlarni ishga tushur
+    </span>
+  </Link>
+
+  {/* 3. Algoritmlar Tugmasi - Emerald Minimalist */}
+  <Link 
+    to="/algorithms" 
+    className="group relative inline-flex items-center justify-center px-8 py-4 font-bold text-emerald-600 dark:text-emerald-400 transition-all duration-300 border-2 border-emerald-500/20 dark:border-emerald-500/30 rounded-2xl hover:bg-emerald-500 hover:text-white dark:hover:bg-emerald-500/20 hover:scale-105 active:scale-95 overflow-hidden"
+  >
+    <span className="absolute inset-0 w-full h-full bg-emerald-500 transition-all duration-300 origin-bottom scale-y-0 group-hover:scale-y-100 -z-10"></span>
+    <span className="flex items-center gap-2">
+      <span className="text-xl group-hover:rotate-12 transition-transform">🧬</span>
+      Algoritmlar
+      <span className="inline-block transition-transform duration-300 group-hover:translate-x-2">→</span>
+    </span>
+  </Link>
+</div>
+
       </div>
 
       {/* Algorithm Pills */}
@@ -99,9 +127,10 @@ export default function HomePage() {
 
       {/* Features Grid */}
       <div>
-        <h2 className="section-title mb-8 justify-center text-2xl">
+        <h2 className="section-title mb-8 justify-center text-2xl text-slate-800 dark:text-slate-100 flex items-center gap-2">
           <span>✨</span> Platforma xususiyatlari
         </h2>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {features.map(feature => (
             <div key={feature.title} className="card-hover group">

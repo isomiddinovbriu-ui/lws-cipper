@@ -82,7 +82,9 @@ export default function DecryptPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-slate-100 mb-2">🔓 Deshifrlash</h1>
+        <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-2">
+          🔓 Deshifrlash
+        </h1>
         <p className="text-slate-400">Shifrlangan matnni qo'lda yoki saqlangan hisobotdan deshifrlash</p>
       </div>
 

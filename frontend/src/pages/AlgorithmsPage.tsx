@@ -84,7 +84,9 @@ export default function AlgorithmsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-slate-100 mb-2">🧬 Algoritmlar</h1>
+          <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-2">
+            🧬 Algoritmlar
+          </h1>
         <p className="text-slate-400">Har bir shifrning texnik tafsilotlari, ichki tuzilishi va xavfsizlik xususiyatlari</p>
       </div>
 
@@ -151,7 +153,7 @@ export default function AlgorithmsPage() {
                   {[
                   { label: "Kalit o'lchami", value: `${algo.keyBits} bits`, sub: `${algo.keyBits / 8} bytes / ${algo.keyBits / 4} hex chars` },
                   { label: "Nonce o'lchami", value: `${algo.nonceBits} bits`, sub: `${algo.nonceBits / 8} bytes / ${algo.nonceBits / 4} hex chars` },
-                  { label: 'Autentifikatsiya tegi', value: algo.isAEAD ? '64–128 bits' : 'N/A', sub: algo.isAEAD ? "Autentifikatsiyalangan shifrlash" : "Faqat oqim shifri" },
+                  { label: 'Autentifikatsiya tegi', value: algo.isAEAD ? '64–128 bits' : 'Mavjud emas', sub: algo.isAEAD ? "Autentifikatsiyalangan shifrlash" : "Faqat oqim shifri" },
                 ].map(p => (
                   <div key={p.label} className="card text-center bg-dark-900/60">
                     <div className="text-primary-300 font-bold text-xl">{p.value}</div>
