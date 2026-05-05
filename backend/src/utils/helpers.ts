@@ -153,3 +153,33 @@ export function validateCryptoParams(
 
   return { valid: true };
 }
+
+/**
+ * Recursively convert values that JSON can't serialize (BigInt, Uint8Array)
+ * into serializable representations (hex strings for BigInt/bytes).
+ */
+export function serializeForJson(obj: unknown): unknown {
+  const seen = new WeakSet();
+
+  function recurse(v: any): any {
+    if (v === null || v === undefined) return v;
+    const t = typeof v;
+    if (t === 'bigint') return '0x' + (v as bigint).toString(16);
+    if (t === 'number' || t === 'string' || t === 'boolean') return v;
+    if (v instanceof Uint8Array) return bytesToHex(v as Uint8Array);
+    if (Array.isArray(v)) return v.map(recurse);
+    if (v instanceof Date) return v.toISOString();
+    if (t === 'object') {
+      if (seen.has(v)) return '[Circular]';
+      seen.add(v);
+      const out: Record<string, any> = {};
+      for (const key of Object.keys(v)) {
+        out[key] = recurse(v[key]);
+      }
+      return out;
+    }
+    return String(v);
+  }
+
+  return recurse(obj);
+}

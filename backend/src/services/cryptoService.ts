@@ -10,6 +10,7 @@ import {
   base64ToBytes,
   buildTxtReport,
   calculateThroughput,
+  serializeForJson,
   normalizeKeyLength,
 } from '../utils/helpers';
 
@@ -140,14 +141,17 @@ export async function encryptData(req: CryptoRequest): Promise<CryptoResponse> {
     originalMimeType: req.originalMimeType,
   });
 
+  const initialStateSerializable = serializeForJson(result.initialState);
+  const stepsSerializable = serializeForJson(result.steps);
+
   return {
     algorithm: req.algorithm,
     ciphertext: ctHex,
     ciphertextBase64: bytesToBase64(result.ciphertext),
     keystream: result.keystream ? bytesToHex(result.keystream) : undefined,
     tag: result.tag,
-    initialState: result.initialState,
-    steps: result.steps,
+    initialState: initialStateSerializable,
+    steps: stepsSerializable as unknown as unknown[],
     timeTaken,
     throughput,
     txtReport,

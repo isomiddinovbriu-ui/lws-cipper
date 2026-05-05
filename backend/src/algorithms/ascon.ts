@@ -138,17 +138,19 @@ function permutation(
 }
 
 function bytesToBigInt(bytes: Uint8Array, offset: number, length = 8): bigint {
+  // Interpret bytes as little-endian into a 64-bit bigint
   let result = 0n;
   for (let i = 0; i < length; i++) {
-    result = (result << 8n) | BigInt(bytes[offset + i] ?? 0);
+    result |= (BigInt(bytes[offset + i] ?? 0) << BigInt(8 * i));
   }
   return result & MASK64;
 }
 
 function bigIntToBytes(n: bigint, length = 8): Uint8Array {
+  // Produce little-endian byte array from bigint
   const result = new Uint8Array(length);
   let v = n & MASK64;
-  for (let i = length - 1; i >= 0; i--) {
+  for (let i = 0; i < length; i++) {
     result[i] = Number(v & 0xffn);
     v >>= 8n;
   }
@@ -364,15 +366,28 @@ export function asconDecrypt(
       plaintext[i + j] = ptBytes[j];
     }
 
-    // For last block: replace only the ciphertext portion of state
-    if (i + RATE >= paddedCT.length) {
-      // Pad and update state
-      const ptPadded = bigIntToBytes(ptBlock);
-      ptPadded[writeLen] = 0x80;
-      for (let j = writeLen + 1; j < RATE; j++) ptPadded[j] = 0;
-      state[0] = bytesToBigInt(ptPadded, 0);
+    // Update state[0] to match what encryption does.
+    // Encryption: state[0] = state[0] XOR paddedPlaintext_block (= ctBlock)
+    //
+    // For non-final blocks: ciphertext block IS ctBlock, so state[0] = block is correct.
+    //
+    // For the FINAL block: we only have `writeLen` bytes of the real ctBlock stored in
+    // `ciphertext`; the rest were never saved. Setting state[0] = paddedCT_fake (which
+    // has an artificial 0x80 suffix) diverges from encryption and breaks the tag.
+    // Fix: rebuild the padded plaintext (pt_actual || 0x80 || 0x00...) and XOR with
+    // the current state, which reconstructs the exact ctBlock encryption produced.
+    const isLastBlock = (i + RATE >= paddedCT.length);
+
+    if (isLastBlock) {
+      // Reconstruct paddedPT = recovered_plaintext_bytes || 0x80 || 0x00...
+      const realPaddedPT = new Uint8Array(RATE);
+      for (let j = 0; j < writeLen; j++) realPaddedPT[j] = ptBytes[j];
+      if (writeLen < RATE) realPaddedPT[writeLen] = 0x80;
+      // state[0] = state[0] XOR paddedPT  (mirrors encryption exactly)
+      state[0] = (state[0] ^ bytesToBigInt(realPaddedPT, 0)) & MASK64;
+      // No permutation on the last block (same as encryption)
     } else {
-      state[0] = block;
+      state[0] = block; // block = full ciphertext block = ctBlock ✓
       const { state: ns } = permutation(state, ROUNDS_B, ROUNDS_A - ROUNDS_B, false);
       state = ns;
     }
@@ -391,7 +406,21 @@ export function asconDecrypt(
   tagBytes.set(bigIntToBytes(state[4]), 8);
   const tag = Buffer.from(tagBytes).toString('hex');
 
-  const valid = !expectedTag || tag === expectedTag;
+  // Normalize expected tag (allow optional 0x prefix and case-insensitive)
+  let expectedNormalized: string | undefined = undefined;
+  if (expectedTag && typeof expectedTag === 'string') {
+    expectedNormalized = expectedTag.replace(/^0x/i, '').trim().toLowerCase();
+  }
+
+  const valid = !expectedNormalized || tag === expectedNormalized;
+
+  if (!valid) {
+    try {
+      // Helpful debug log for investigations (does not expose keys)
+      // eslint-disable-next-line no-console
+      console.debug('[ascon] tag mismatch', { computed: tag, expected: expectedNormalized });
+    } catch {}
+  }
 
   if (captureSteps) {
     steps.push({
