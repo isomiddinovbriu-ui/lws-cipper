@@ -109,7 +109,7 @@ export default function Layout({ children }: LayoutProps) {
         'border-t mt-16 py-8 text-center text-sm',
         isDark ? 'border-slate-700/50 text-slate-500' : 'border-slate-200 text-slate-400'
       )}>
-        <p>CryptoPlatform — Yengil shifrlar tahlili platformasi</p>
+        <p>CryptoPlatform — Yengil vaznli shifrlash algoritmlar tahlili platformasi</p>
         <p className="mt-1 text-xs">Trivium · Grain-128AEAD · MICKEY-v2 · ChaCha20 · Ascon-AEAD128</p>
       </footer>
     </div>

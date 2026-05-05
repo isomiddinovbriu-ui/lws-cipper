@@ -217,7 +217,7 @@ export default function BenchmarkPage() {
         </div>
         {suite && (
           <>
-            <span className="text-slate-500 text-sm">Completed: {new Date(suite.timestamp).toLocaleTimeString()}</span>
+            <span className="text-slate-500 text-sm">Tugatilgan vaqt: {new Date(suite.timestamp).toLocaleTimeString()}</span>
             {uploadedFileName && <span className="text-slate-400 text-sm">File: {uploadedFileName}</span>}
             <div className="ml-auto flex gap-2">
               <button
@@ -357,7 +357,7 @@ export default function BenchmarkPage() {
                 </div>
               ) : (
                 <div>
-                  <div className="text-slate-400 text-sm mb-2">Built-in synthetic payloads used for full-suite benchmarking:</div>
+                  <div className="text-slate-400 text-sm mb-2">To'liq to'plamli benchmarking uchun ishlatiladigan o'rnatilgan sintetik yuklamalar:</div>
                   <div className="flex flex-wrap gap-2">
                     {Object.keys(DATA_SIZE_LABELS).map(k => {
                       const size = Number(k);

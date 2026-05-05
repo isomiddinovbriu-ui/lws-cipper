@@ -58,7 +58,7 @@ export default function HomePage() {
         </div>
 
         <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
-          <span className="text-gradient">Yengil shifrlar</span>
+          <span className="text-gradient">Yengil vaznli shifrlash algoritmlar</span>
           <br />
           <span className="text-slate-100">Tahlil to'plami</span>
         </h1>
