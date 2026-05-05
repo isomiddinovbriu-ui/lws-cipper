@@ -207,7 +207,7 @@ export default function BenchmarkPage() {
         <div className="flex items-center gap-2">
           <input type="file" accept="*/*" onChange={handleFileChange} />
           <button onClick={handleUploadBenchmark} disabled={loading} className="btn-secondary">
-            Upload & Run
+            Komputerdan benchmark qilish
           </button>
         </div>
         <div className="flex items-center gap-2">
