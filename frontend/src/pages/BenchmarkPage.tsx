@@ -300,8 +300,8 @@ export default function BenchmarkPage() {
                   <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} label={{ value: 'MB/s', angle: -90, position: 'insideLeft', fill: '#64748b' }} />
                   <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', color: '#f1f5f9' }} />
                   <Legend wrapperStyle={{ color: '#94a3b8' }} />
-                  <Bar dataKey="throughputEnc" name="Encrypt (MB/s)" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="throughputDec" name="Decrypt (MB/s)" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="throughputEnc" name="Shifrlash (MB/s)" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="throughputDec" name="Deshifrlash (MB/s)" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
                 </BarChart>
               ) : chartType === 'bar-time' ? (
                 <BarChart data={currentRuns}>
@@ -310,8 +310,8 @@ export default function BenchmarkPage() {
                   <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} label={{ value: 'ms', angle: -90, position: 'insideLeft', fill: '#64748b' }} />
                   <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', color: '#f1f5f9' }} />
                   <Legend wrapperStyle={{ color: '#94a3b8' }} />
-                  <Bar dataKey="encryptTime" name="Encrypt (ms)" fill="#10b981" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="decryptTime" name="Decrypt (ms)" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="encryptTime" name="Shifrlash (ms)" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="decryptTime" name="Deshifrlash (ms)" fill="#f59e0b" radius={[4, 4, 0, 0]} />
                 </BarChart>
               ) : chartType === 'line-trend' ? (
                 <LineChart data={getThroughputTrend()}>
@@ -330,9 +330,9 @@ export default function BenchmarkPage() {
                   <PolarAngleAxis dataKey="algorithm" tick={{ fill: '#94a3b8', fontSize: 11 }} />
                   <PolarRadiusAxis tick={{ fill: '#64748b', fontSize: 10 }} domain={[0, 100]} />
                   <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', color: '#f1f5f9' }} />
-                  <Radar name="Throughput" dataKey="Throughput" stroke="#0ea5e9" fill="#0ea5e9" fillOpacity={0.2} />
-                  <Radar name="Security" dataKey="Security" stroke="#10b981" fill="#10b981" fillOpacity={0.2} />
-                  <Radar name="IoT Fit" dataKey="IoTFit" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.2} />
+                  <Radar name="Shifrlash" dataKey="Throughput" stroke="#0ea5e9" fill="#0ea5e9" fillOpacity={0.2} />
+                  <Radar name="Xavfsizlik" dataKey="Security" stroke="#10b981" fill="#10b981" fillOpacity={0.2} />
+                  <Radar name="IoT Moslashuvchanlik" dataKey="IoTFit" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.2} />
                   <Legend wrapperStyle={{ color: '#94a3b8' }} />
                 </RadarChart>
               )}
