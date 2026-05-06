@@ -234,6 +234,11 @@ export function grain128Encrypt(
 
 /**
  * Decrypt using Grain-128AEAD
+ *
+ * NOTE: grain128Encrypt computes the MAC tag using plaintext bits to update SR.
+ * If we just call grain128Encrypt(ciphertext,...) the SR gets updated with
+ * ciphertext bits instead of plaintext bits → wrong tag every time.
+ * This function properly decrypts AND computes the tag over plaintext bits.
  */
 export function grain128Decrypt(
   ciphertext: Uint8Array,
@@ -244,18 +249,70 @@ export function grain128Decrypt(
   captureSteps = false,
   maxSteps = 64
 ): Grain128Result & { valid: boolean } {
-  const result = grain128Encrypt(ciphertext, key, iv, aad, captureSteps, maxSteps);
-  // XOR again to recover plaintext (symmetric)
-  const plaintext = new Uint8Array(ciphertext.length);
-  for (let i = 0; i < ciphertext.length; i++) {
-    plaintext[i] = ciphertext[i] ^ result.keystream[i];
+  if (key.length !== 16) throw new Error('Grain-128AEAD key must be 16 bytes (128 bits)');
+  if (iv.length !== 12) throw new Error('Grain-128AEAD IV must be 12 bytes (96 bits)');
+
+  const { lfsr, nfsr, initialState } = initGrain128(key, iv);
+
+  // Generate accumulator and SR initialization keystream (64+64 bits)
+  const accBits: number[] = [];
+  const srBits: number[] = [];
+  for (let i = 0; i < 64; i++) accBits.push(grainClock(lfsr, nfsr));
+  for (let i = 0; i < 64; i++) srBits.push(grainClock(lfsr, nfsr));
+
+  const acc = [...accBits];
+  const sr = [...srBits];
+
+  const steps: Grain128StepState[] = [];
+
+  // Process AAD — identical to encryption
+  const aadBits = bytesToBits(aad);
+  for (let i = 0; i < aadBits.length; i++) {
+    grainClock(lfsr, nfsr);
+    for (let j = 63; j > 0; j--) acc[j] = acc[j - 1];
+    acc[0] = (acc[0] ^ aadBits[i]) & 1;
   }
 
-  const valid = !expectedTag || result.tag === expectedTag;
+  // Decrypt ciphertext and compute MAC over plaintext bits
+  const plaintextBits: number[] = [];
+  const keystreamBits: number[] = [];
+  const ctBits = bytesToBits(ciphertext);
+
+  for (let i = 0; i < ctBits.length; i++) {
+    const y = grainClock(lfsr, nfsr);
+
+    if (captureSteps && i < maxSteps) {
+      steps.push({
+        step: i,
+        keystreamBit: y,
+        lfsrSlice: lfsr.slice(0, 8),
+        nfsrSlice: nfsr.slice(0, 8),
+      });
+    }
+
+    keystreamBits.push(y);
+    // XOR ciphertext bit with keystream → plaintext bit
+    const ptBit = ctBits[i] ^ y;
+    plaintextBits.push(ptBit);
+
+    // Update SR with PLAINTEXT bit (same as encryption) → correct MAC
+    for (let j = 63; j > 0; j--) sr[j] = sr[j - 1];
+    sr[0] = ptBit;
+    // XOR sr into acc for MAC
+    for (let j = 0; j < 64; j++) acc[j] ^= sr[j] & y;
+  }
+
+  const tagBytes = bitsToBytes(acc);
+  const tag = Buffer.from(tagBytes).toString('hex');
+
+  const valid = !expectedTag || tag === expectedTag;
 
   return {
-    ...result,
-    ciphertext: plaintext,
+    ciphertext: bitsToBytes(plaintextBits),
+    keystream: bitsToBytes(keystreamBits),
+    tag,
+    initialState: { ...initialState, acc: [...acc], sr: [...sr] },
+    steps,
     valid,
   };
 }
