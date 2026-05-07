@@ -76,10 +76,10 @@ function bytesToBits(bytes: Uint8Array): number[] {
  */
 function clockR(R: number[], controlBit: number): void {
   // Compute feedback
-  let feedback = R[99]; // MSB
-  for (let i = 0; i < 100; i++) {
-    feedback ^= R[i] & FB0[i];
-  }
+let feedback = 0;
+for (let i = 0; i < 100; i++) {
+  feedback ^= R[i] & FB0[i];
+}
 
   if (controlBit) {
     // XOR with FB1
@@ -98,17 +98,11 @@ function clockR(R: number[], controlBit: number): void {
  * Clock the S register - non-linear feedback with companion sequences
  */
 function clockS(S: number[], controlBit: number): void {
-  let feedback = S[99];
-  // XOR with companion sequence based on S[34]
   const useComp1 = S[34];
 
-  let fb = S[99];
+  let fb = 0;
   for (let i = 0; i < 100; i++) {
-    if (useComp1) {
-      fb ^= S[i] & COMP1[i];
-    } else {
-      fb ^= S[i] & COMP0[i];
-    }
+    fb ^= S[i] & (useComp1 ? COMP1[i] : COMP0[i]);
   }
 
   if (controlBit) {
@@ -117,8 +111,6 @@ function clockS(S: number[], controlBit: number): void {
     }
     fb ^= 1;
   }
-
-  void feedback;
 
   for (let i = 99; i > 0; i--) S[i] = S[i - 1];
   S[0] = fb;
@@ -129,8 +121,7 @@ function clockS(S: number[], controlBit: number): void {
  * Returns the output bit (R[99] XOR S[99] before clocking - use R[0] XOR S[0] for output)
  */
 function mickeyClock(R: number[], S: number[], input = 0): number {
-  const outputBit = R[0] ^ S[0];
-
+  const outputBit = R[99] ^ S[99];
   // Control bits for clocking
   const controlBitR = input ^ S[34];
   const controlBitS = input ^ R[67];

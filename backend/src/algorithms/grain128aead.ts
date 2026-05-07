@@ -26,6 +26,34 @@ export interface Grain128Result {
   initialState: Grain128State;
   steps: Grain128StepState[];
 }
+/**
+ * Grain-128AEAD Stream Cipher / AEAD Implementation
+ * Based on the NIST Lightweight Cryptography competition specification
+ * Key: 128 bits (16 bytes), IV: 96 bits (12 bytes)
+ * State: 128-bit LFSR + 128-bit NFSR + 64-bit accumulator + 64-bit shift register
+ */
+
+export interface Grain128State {
+  lfsr: number[];   // 128 bits as array of bits
+  nfsr: number[];   // 128 bits as array of bits
+  acc: number[];    // 64-bit accumulator
+  sr: number[];     // 64-bit shift register
+}
+
+export interface Grain128StepState {
+  step: number;
+  keystreamBit: number;
+  lfsrSlice: number[];
+  nfsrSlice: number[];
+}
+
+export interface Grain128Result {
+  ciphertext: Uint8Array;
+  keystream: Uint8Array;
+  tag: string;
+  initialState: Grain128State;
+  steps: Grain128StepState[];
+}
 
 // LFSR feedback polynomial: x^128 + x^7 + x^38 + x^70 + x^81 + x^96 + 1
 function lfsrFeedback(s: number[]): number {
