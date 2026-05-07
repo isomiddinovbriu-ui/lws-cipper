@@ -26,41 +26,13 @@ export interface Grain128Result {
   initialState: Grain128State;
   steps: Grain128StepState[];
 }
-/**
- * Grain-128AEAD Stream Cipher / AEAD Implementation
- * Based on the NIST Lightweight Cryptography competition specification
- * Key: 128 bits (16 bytes), IV: 96 bits (12 bytes)
- * State: 128-bit LFSR + 128-bit NFSR + 64-bit accumulator + 64-bit shift register
- */
 
-export interface Grain128State {
-  lfsr: number[];   // 128 bits as array of bits
-  nfsr: number[];   // 128 bits as array of bits
-  acc: number[];    // 64-bit accumulator
-  sr: number[];     // 64-bit shift register
-}
-
-export interface Grain128StepState {
-  step: number;
-  keystreamBit: number;
-  lfsrSlice: number[];
-  nfsrSlice: number[];
-}
-
-export interface Grain128Result {
-  ciphertext: Uint8Array;
-  keystream: Uint8Array;
-  tag: string;
-  initialState: Grain128State;
-  steps: Grain128StepState[];
-}
-
-// LFSR feedback polynomial: x^128 + x^7 + x^38 + x^70 + x^81 + x^96 + 1
+// LFSR feedback polynomial: x^128 + x^96 + x^81 + x^70 + x^38 + x^7 + 1
 function lfsrFeedback(s: number[]): number {
   return s[0] ^ s[7] ^ s[38] ^ s[70] ^ s[81] ^ s[96];
 }
 
-// NFSR feedback function (nonlinear)
+// NFSR feedback function (nonlinear), s[0] is LFSR output bit fed in
 function nfsrFeedback(b: number[], s: number[]): number {
   return (
     s[0] ^
@@ -69,7 +41,7 @@ function nfsrFeedback(b: number[], s: number[]): number {
     b[56] ^
     b[91] ^
     b[96] ^
-    (b[3] & b[67]) ^
+    (b[3]  & b[67]) ^
     (b[11] & b[13]) ^
     (b[17] & b[18]) ^
     (b[27] & b[59]) ^
@@ -82,35 +54,36 @@ function nfsrFeedback(b: number[], s: number[]): number {
   );
 }
 
-// Output function h(x) - takes bits from LFSR and NFSR
+/**
+ * Output function y_t = h(x) ⊕ s[93] ⊕ b[2] ⊕ b[15] ⊕ b[36] ⊕ b[45] ⊕ b[64] ⊕ b[73] ⊕ b[89]
+ *
+ * h(x) = x0·x1 ⊕ x2·x3 ⊕ x4·x5 ⊕ x6·x7 ⊕ x0·x4·x8
+ *   x0 = s[8],  x1 = b[12], x2 = s[13], x3 = s[20],
+ *   x4 = b[95], x5 = s[42], x6 = s[60], x7 = s[79], x8 = s[94]
+ *
+ * FIX #1: Previous version had wrong quadratic terms, missing triple product,
+ *         incorrect linear terms, and swapped x0/x1 in the triple product.
+ */
 function outputFunction(b: number[], s: number[]): number {
-  const x0 = b[12];
-  const x1 = s[8];
-  const x2 = s[13];
-  const x3 = s[20];
-  const x4 = b[95];
-  const x5 = s[42];
-  const x6 = s[60];
-  const x7 = s[79];
-  const x8 = s[94];
+  const x0 = s[8];   // LFSR
+  const x1 = b[12];  // NFSR
+  const x2 = s[13];  // LFSR
+  const x3 = s[20];  // LFSR
+  const x4 = b[95];  // NFSR
+  const x5 = s[42];  // LFSR
+  const x6 = s[60];  // LFSR
+  const x7 = s[79];  // LFSR
+  const x8 = s[94];  // LFSR
 
-  return (
-    (x1 & x4) ^
-    (x0 & x3) ^
-    (x2 & x5) ^
-    (x3 & x4) ^
-    (x4 & x6) ^
-    (x5 & x7) ^
-    (x6 & x8) ^
-    x0 ^
-    x1 ^
-    x2 ^
-    x3 ^
-    x4 ^
-    x6 ^
-    x7 ^
-    x8
-  );
+  const hx =
+    (x0 & x1) ^
+    (x2 & x3) ^
+    (x4 & x5) ^
+    (x6 & x7) ^
+    (x0 & x4 & x8);  // triple product uses s[8], NOT b[12]
+
+  // Linear masking bits from both registers
+  return hx ^ s[93] ^ b[2] ^ b[15] ^ b[36] ^ b[45] ^ b[64] ^ b[73] ^ b[89];
 }
 
 function bytesToBits(bytes: Uint8Array): number[] {
@@ -156,72 +129,92 @@ function initGrain128(key: Uint8Array, iv: Uint8Array): {
     sr: new Array(64).fill(0),
   };
 
-  // 256 pre-output rounds (output fed back into both registers)
+  // 256 pre-output rounds: output bit fed back into BOTH registers
   for (let i = 0; i < 256; i++) {
-    const y = outputFunction(nfsr, lfsr);
+    const y    = outputFunction(nfsr, lfsr);
     const lNew = lfsrFeedback(lfsr) ^ y;
     const nNew = nfsrFeedback(nfsr, lfsr) ^ y;
-    lfsr.shift();
-    lfsr.push(lNew);
-    nfsr.shift();
-    nfsr.push(nNew);
+    lfsr.shift(); lfsr.push(lNew);
+    nfsr.shift(); nfsr.push(nNew);
   }
 
   return { lfsr, nfsr, initialState };
 }
 
 /**
- * Clock Grain-128AEAD and get one keystream bit
+ * Clock Grain-128AEAD and produce one keystream bit (no feedback during streaming).
  */
 function grainClock(lfsr: number[], nfsr: number[]): number {
-  const y = outputFunction(nfsr, lfsr);
+  const y    = outputFunction(nfsr, lfsr);
   const lNew = lfsrFeedback(lfsr);
   const nNew = nfsrFeedback(nfsr, lfsr);
-  lfsr.shift();
-  lfsr.push(lNew);
-  nfsr.shift();
-  nfsr.push(nNew);
+  lfsr.shift(); lfsr.push(lNew);
+  nfsr.shift(); nfsr.push(nNew);
   return y;
 }
 
 /**
- * Encrypt using Grain-128AEAD with authentication
+ * Update the 64-bit accumulator (A) given a keystream bit y and current shift register (S).
+ * Rule: if y == 1 then A = A XOR S.
+ *
+ * This single helper makes the MAC logic identical in encrypt and decrypt.
+ */
+function updateAcc(acc: number[], sr: number[], y: number): void {
+  if (y === 1) {
+    for (let j = 0; j < 64; j++) acc[j] ^= sr[j];
+  }
+}
+
+/**
+ * Push a data bit into the front of the 64-bit shift register (S).
+ * Bit 0 holds the most recently inserted bit; bit 63 is oldest.
+ */
+function shiftSR(sr: number[], bit: number): void {
+  for (let j = 63; j > 0; j--) sr[j] = sr[j - 1];
+  sr[0] = bit;
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
+ * Encrypt using Grain-128AEAD with authentication.
  */
 export function grain128Encrypt(
-  plaintext: Uint8Array,
-  key: Uint8Array,
-  iv: Uint8Array,
-  aad: Uint8Array = new Uint8Array(0),
-  captureSteps = false,
-  maxSteps = 64
+  plaintext:    Uint8Array,
+  key:          Uint8Array,
+  iv:           Uint8Array,
+  aad:          Uint8Array = new Uint8Array(0),
+  captureSteps  = false,
+  maxSteps      = 64
 ): Grain128Result {
   if (key.length !== 16) throw new Error('Grain-128AEAD key must be 16 bytes (128 bits)');
-  if (iv.length !== 12) throw new Error('Grain-128AEAD IV must be 12 bytes (96 bits)');
+  if (iv.length  !== 12) throw new Error('Grain-128AEAD IV must be 12 bytes (96 bits)');
 
   const { lfsr, nfsr, initialState } = initGrain128(key, iv);
 
-  // Generate accumulator and SR initialization keystream (64+64 bits)
-  const accBits: number[] = [];
-  const srBits: number[] = [];
-  for (let i = 0; i < 64; i++) accBits.push(grainClock(lfsr, nfsr));
-  for (let i = 0; i < 64; i++) srBits.push(grainClock(lfsr, nfsr));
+  // FIX #2: SR is initialised FIRST (64 bits), then ACC (next 64 bits).
+  // Previous code had the order reversed.
+  const sr: number[] = [];
+  for (let i = 0; i < 64; i++) sr.push(grainClock(lfsr, nfsr));
 
-  const acc = [...accBits];
-  const sr = [...srBits];
+  const acc: number[] = [];
+  for (let i = 0; i < 64; i++) acc.push(grainClock(lfsr, nfsr));
 
   const steps: Grain128StepState[] = [];
 
-  // Process AAD - generate authentication bits interleaved
+  // FIX #3: AAD phase — shift SR with each AAD bit, conditionally XOR SR into ACC.
+  // Previous code was shifting ACC (!) and XOR-ing the AAD bit into acc[0] — wrong.
   const aadBits = bytesToBits(aad);
   for (let i = 0; i < aadBits.length; i++) {
     const y = grainClock(lfsr, nfsr);
-    // Update accumulator with AAD bit
-    for (let j = 63; j > 0; j--) acc[j] = acc[j - 1];
-    acc[0] = (acc[0] ^ aadBits[i]) & 1;
+    shiftSR(sr, aadBits[i]);   // insert AAD bit into SR
+    updateAcc(acc, sr, y);      // if y==1: ACC ^= SR
   }
 
-  // Encrypt plaintext
-  const cipherBits: number[] = [];
+  // Encryption phase
+  const cipherBits:    number[] = [];
   const keystreamBits: number[] = [];
   const ptBits = bytesToBits(plaintext);
 
@@ -230,30 +223,26 @@ export function grain128Encrypt(
 
     if (captureSteps && i < maxSteps) {
       steps.push({
-        step: i,
+        step:        i,
         keystreamBit: y,
-        lfsrSlice: lfsr.slice(0, 8),
-        nfsrSlice: nfsr.slice(0, 8),
+        lfsrSlice:   lfsr.slice(0, 8),
+        nfsrSlice:   nfsr.slice(0, 8),
       });
     }
 
     keystreamBits.push(y);
     cipherBits.push(ptBits[i] ^ y);
 
-    // Update SR and accumulate
-    for (let j = 63; j > 0; j--) sr[j] = sr[j - 1];
-    sr[0] = ptBits[i];
-    // XOR sr into acc for MAC
-    for (let j = 0; j < 64; j++) acc[j] ^= sr[j] & y;
+    shiftSR(sr, ptBits[i]);    // insert PLAINTEXT bit into SR
+    updateAcc(acc, sr, y);     // if y==1: ACC ^= SR
   }
 
-  // Simple 64-bit tag from accumulator
   const tagBytes = bitsToBytes(acc);
-  const tag = Buffer.from(tagBytes).toString('hex');
+  const tag      = Buffer.from(tagBytes).toString('hex');
 
   return {
-    ciphertext: bitsToBytes(cipherBits),
-    keystream: bitsToBytes(keystreamBits),
+    ciphertext:   bitsToBytes(cipherBits),
+    keystream:    bitsToBytes(keystreamBits),
     tag,
     initialState: { ...initialState, acc: [...acc], sr: [...sr] },
     steps,
@@ -261,47 +250,43 @@ export function grain128Encrypt(
 }
 
 /**
- * Decrypt using Grain-128AEAD
+ * Decrypt using Grain-128AEAD and verify the authentication tag.
  *
- * NOTE: grain128Encrypt computes the MAC tag using plaintext bits to update SR.
- * If we just call grain128Encrypt(ciphertext,...) the SR gets updated with
- * ciphertext bits instead of plaintext bits → wrong tag every time.
- * This function properly decrypts AND computes the tag over plaintext bits.
+ * The MAC is computed over PLAINTEXT bits (same as during encryption),
+ * so the SR must be updated with the recovered plaintext, not the ciphertext.
  */
 export function grain128Decrypt(
-  ciphertext: Uint8Array,
-  key: Uint8Array,
-  iv: Uint8Array,
-  aad: Uint8Array = new Uint8Array(0),
+  ciphertext:   Uint8Array,
+  key:          Uint8Array,
+  iv:           Uint8Array,
+  aad:          Uint8Array = new Uint8Array(0),
   expectedTag?: string,
-  captureSteps = false,
-  maxSteps = 64
+  captureSteps  = false,
+  maxSteps      = 64
 ): Grain128Result & { valid: boolean } {
   if (key.length !== 16) throw new Error('Grain-128AEAD key must be 16 bytes (128 bits)');
-  if (iv.length !== 12) throw new Error('Grain-128AEAD IV must be 12 bytes (96 bits)');
+  if (iv.length  !== 12) throw new Error('Grain-128AEAD IV must be 12 bytes (96 bits)');
 
   const { lfsr, nfsr, initialState } = initGrain128(key, iv);
 
-  // Generate accumulator and SR initialization keystream (64+64 bits)
-  const accBits: number[] = [];
-  const srBits: number[] = [];
-  for (let i = 0; i < 64; i++) accBits.push(grainClock(lfsr, nfsr));
-  for (let i = 0; i < 64; i++) srBits.push(grainClock(lfsr, nfsr));
+  // FIX #2 (same as encrypt): SR first, then ACC.
+  const sr: number[] = [];
+  for (let i = 0; i < 64; i++) sr.push(grainClock(lfsr, nfsr));
 
-  const acc = [...accBits];
-  const sr = [...srBits];
+  const acc: number[] = [];
+  for (let i = 0; i < 64; i++) acc.push(grainClock(lfsr, nfsr));
 
   const steps: Grain128StepState[] = [];
 
-  // Process AAD — identical to encryption
+  // FIX #3 (same as encrypt): correct AAD accumulation.
   const aadBits = bytesToBits(aad);
   for (let i = 0; i < aadBits.length; i++) {
-    grainClock(lfsr, nfsr);
-    for (let j = 63; j > 0; j--) acc[j] = acc[j - 1];
-    acc[0] = (acc[0] ^ aadBits[i]) & 1;
+    const y = grainClock(lfsr, nfsr);
+    shiftSR(sr, aadBits[i]);
+    updateAcc(acc, sr, y);
   }
 
-  // Decrypt ciphertext and compute MAC over plaintext bits
+  // Decryption phase: recover plaintext bits, compute MAC over them.
   const plaintextBits: number[] = [];
   const keystreamBits: number[] = [];
   const ctBits = bytesToBits(ciphertext);
@@ -311,33 +296,28 @@ export function grain128Decrypt(
 
     if (captureSteps && i < maxSteps) {
       steps.push({
-        step: i,
+        step:        i,
         keystreamBit: y,
-        lfsrSlice: lfsr.slice(0, 8),
-        nfsrSlice: nfsr.slice(0, 8),
+        lfsrSlice:   lfsr.slice(0, 8),
+        nfsrSlice:   nfsr.slice(0, 8),
       });
     }
 
     keystreamBits.push(y);
-    // XOR ciphertext bit with keystream → plaintext bit
-    const ptBit = ctBits[i] ^ y;
+    const ptBit = ctBits[i] ^ y;   // decrypt
     plaintextBits.push(ptBit);
 
-    // Update SR with PLAINTEXT bit (same as encryption) → correct MAC
-    for (let j = 63; j > 0; j--) sr[j] = sr[j - 1];
-    sr[0] = ptBit;
-    // XOR sr into acc for MAC
-    for (let j = 0; j < 64; j++) acc[j] ^= sr[j] & y;
+    shiftSR(sr, ptBit);            // insert PLAINTEXT bit (not ciphertext!)
+    updateAcc(acc, sr, y);         // if y==1: ACC ^= SR
   }
 
   const tagBytes = bitsToBytes(acc);
-  const tag = Buffer.from(tagBytes).toString('hex');
-
-  const valid = !expectedTag || tag === expectedTag;
+  const tag      = Buffer.from(tagBytes).toString('hex');
+  const valid    = !expectedTag || tag === expectedTag;
 
   return {
-    ciphertext: bitsToBytes(plaintextBits),
-    keystream: bitsToBytes(keystreamBits),
+    ciphertext:   bitsToBytes(plaintextBits),   // "ciphertext" field returns plaintext on decrypt
+    keystream:    bitsToBytes(keystreamBits),
     tag,
     initialState: { ...initialState, acc: [...acc], sr: [...sr] },
     steps,
