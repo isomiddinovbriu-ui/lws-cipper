@@ -419,7 +419,7 @@ export default function BenchmarkPage() {
             4 ta ma'lumot o'lchamida (1KB, 16KB, 64KB, 256KB) barcha 5 ta algoritmni sinab ko'rish uchun "Benchmarkni ishga tushirish" tugmasini bosing. Natijalar o'tkazish qobiliyati, kechikish va xotira profilini o'z ichiga oladi.
           </p>
           <button onClick={handleRunBenchmark} disabled={loading} className="btn-primary px-8">
-            {loading ? <><span className="animate-spin">⟳</span> Running...</> : '▶ Benchmarkni hozir ishga tushirish'}
+            {loading ? <><span className="animate-spin">⟳</span> Sinov ishlanmoqda...</> : '▶ Benchmarkni hozir ishga tushirish'}
           </button>
         </div>
       )}
