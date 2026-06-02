@@ -42,6 +42,20 @@ export default function RealtimeBenchmarkPage() {
   const [connectedPeer, setConnectedPeer] = useState<boolean>(false);
   const [roomKeyHex, setRoomKeyHex] = useState<string | null>(null);
   const [stats, setStats] = useState<Record<string, { encrypt: number; decrypt: number; throughput: number }>>({});
+  const [wsStatus, setWsStatus] = useState<string>('DISCONNECTED');
+
+  const currentRoomRef = useRef<string | null>(null);
+  const roomKeyHexRef = useRef<string | null>(null);
+
+  const updateCurrentRoom = (val: string | null) => {
+    setCurrentRoom(val);
+    currentRoomRef.current = val;
+  };
+
+  const updateRoomKeyHex = (val: string | null) => {
+    setRoomKeyHex(val);
+    roomKeyHexRef.current = val;
+  };
 
   const resultsBufferRef = useRef<Record<string, Array<{ ts: number; enc: number; dec: number; th: number }>>>({});
 
@@ -89,7 +103,10 @@ export default function RealtimeBenchmarkPage() {
     }
   }
 
-  useEffect(() => { startLocalMedia(); }, []);
+  useEffect(() => {
+    startLocalMedia();
+    ensureWebSocket();
+  }, []);
 
   function ensureWebSocket() {
     if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
@@ -100,18 +117,29 @@ export default function RealtimeBenchmarkPage() {
     const envUrl = (import.meta.env.VITE_WS_URL as string) ?? '';
     const defaultHost = window.location.host;
     const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const wsUrl = envUrl || `${scheme}://${defaultHost}/ws`;
+    
+    let wsUrl = envUrl;
+    if (!wsUrl) {
+      if (defaultHost.includes(':5173')) {
+        wsUrl = `${scheme}://${window.location.hostname}:3099/ws`;
+      } else {
+        wsUrl = `${scheme}://${defaultHost}/ws`;
+      }
+    }
+    
     debugLog('ensureWebSocket - creating WebSocket to', wsUrl);
     const ws = new WebSocket(wsUrl);
     ws.binaryType = 'arraybuffer';
+    setWsStatus('CONNECTING');
 
     ws.addEventListener('open', () => {
-      debugLog('WS open');
+      console.log('[RealtimeBenchmark] websocket open');
+      setWsStatus('CONNECTED');
     });
 
     ws.addEventListener('message', (ev) => {
       try {
-        debugLog('WS receive raw', ev.data);
+        console.log('[RealtimeBenchmark] websocket receive', ev.data);
         handleWsMessage(ev as MessageEvent);
       } catch (err) {
         debugLog('WS message handler error', err);
@@ -119,13 +147,15 @@ export default function RealtimeBenchmarkPage() {
     });
 
     ws.addEventListener('close', (ev) => {
-      debugLog('WS close', ev);
+      console.log('[RealtimeBenchmark] websocket close', ev);
       wsRef.current = null;
+      setWsStatus('DISCONNECTED');
       toast.error('Signaling connection closed');
     });
 
     ws.addEventListener('error', (ev) => {
-      debugLog('WS error', ev);
+      console.log('[RealtimeBenchmark] websocket error', ev);
+      setWsStatus('ERROR');
       toast.error('Signaling connection error');
     });
 
@@ -136,94 +166,49 @@ export default function RealtimeBenchmarkPage() {
   function sendSignalingMessage(obj: unknown) {
     try {
       const ws = ensureWebSocket();
-      if (!ws) throw new Error('no websocket');
+      if (!ws) {
+        toast.error('No signaling connection available');
+        return false;
+      }
       const state = ws.readyState;
-      debugLog('sendSignalingMessage state=', state, 'msg=', obj);
       const payload = JSON.stringify(obj);
+
       if (state === WebSocket.OPEN) {
         ws.send(payload);
-        debugLog('WS send', payload);
+        console.log('[RealtimeBenchmark] websocket send', payload);
         return true;
       }
 
       if (state === WebSocket.CONNECTING) {
-        debugLog('WS connecting - will send on open');
+        console.log('[RealtimeBenchmark] WS connecting - will send on open', payload);
         const onOpen = () => {
-          try { ws.send(payload); debugLog('WS send on open', payload); } catch (e) { debugLog('send on open failed', e); }
+          try {
+            ws.send(payload);
+            console.log('[RealtimeBenchmark] websocket send', payload);
+          } catch (e) {
+            console.error('[RealtimeBenchmark] send on open failed', e);
+          }
           ws.removeEventListener('open', onOpen);
         };
         ws.addEventListener('open', onOpen);
         // set fallback timeout
         setTimeout(() => {
           if (ws.readyState !== WebSocket.OPEN) {
-            debugLog('WS did not open in time for message', obj);
+            console.warn('[RealtimeBenchmark] WS did not open in time for message', obj);
             toast.error('Signaling not ready');
           }
         }, 5000);
         return true;
       }
 
-      debugLog('WS not open/connecting - state=', state);
-      toast.error('Signaling connection not open');
+      console.warn('[RealtimeBenchmark] WebSocket is not OPEN (readyState = ' + state + ')');
+      toast.error('Signaling connection is not active (status: ' + state + ')');
       return false;
     } catch (err) {
-      debugLog('sendSignalingMessage error', err);
+      console.error('[RealtimeBenchmark] sendSignalingMessage error', err);
       toast.error('Failed to send signaling message');
       return false;
     }
-  }
-
-  async function ensureWebSocketOpen(timeout = 5000): Promise<WebSocket> {
-    const ws = ensureWebSocket();
-    if (!ws) throw new Error('Failed to create WebSocket');
-    if (ws.readyState === WebSocket.OPEN) {
-      console.debug('[ensureWebSocketOpen] already OPEN');
-      return ws;
-    }
-
-    if (ws.readyState === WebSocket.CONNECTING) {
-      console.debug('[ensureWebSocketOpen] waiting for CONNECTING -> OPEN');
-      return await new Promise((resolve, reject) => {
-        const onOpen = () => {
-          cleanup();
-          console.debug('[ensureWebSocketOpen] open event fired');
-          resolve(ws);
-        };
-        const onError = (e: Event) => {
-          cleanup();
-          console.warn('[ensureWebSocketOpen] error while connecting', e);
-          reject(new Error('WebSocket error'));
-        };
-        const onClose = () => {
-          cleanup();
-          reject(new Error('WebSocket closed before open'));
-        };
-        const to = setTimeout(() => {
-          cleanup();
-          reject(new Error('WebSocket open timeout'));
-        }, timeout);
-
-        function cleanup() {
-          ws.removeEventListener('open', onOpen as EventListener);
-          ws.removeEventListener('error', onError as EventListener);
-          ws.removeEventListener('close', onClose as EventListener);
-          clearTimeout(to);
-        }
-
-        ws.addEventListener('open', onOpen as EventListener);
-        ws.addEventListener('error', onError as EventListener);
-        ws.addEventListener('close', onClose as EventListener);
-      });
-    }
-
-    // otherwise (CLOSED or CLOSING), create a fresh one and wait
-    console.debug('[ensureWebSocketOpen] socket not open, creating new');
-    const newWs = ensureWebSocket();
-    return await new Promise((resolve, reject) => {
-      const to = setTimeout(() => reject(new Error('WebSocket open timeout')), timeout);
-      newWs.addEventListener('open', () => { clearTimeout(to); resolve(newWs); }, { once: true });
-      newWs.addEventListener('error', (e) => { clearTimeout(to); reject(new Error('WebSocket error')); }, { once: true });
-    });
   }
 
   function handleWsMessage(ev: MessageEvent) {
@@ -237,13 +222,15 @@ export default function RealtimeBenchmarkPage() {
     debugLog('handleWsMessage - type=', msg.type, 'payload=', msg);
     switch (msg.type) {
       case 'created':
-        setCurrentRoom(msg.roomId);
-        setRoomKeyHex(msg.keyHex);
+        updateCurrentRoom(msg.roomId);
+        updateRoomKeyHex(msg.keyHex);
+        console.log('[RealtimeBenchmark] room created', msg.roomId);
         toast.success(`Room ${msg.roomId} created`);
         break;
       case 'joined':
-        setCurrentRoom(msg.roomId);
-        setRoomKeyHex(msg.keyHex);
+        updateCurrentRoom(msg.roomId);
+        updateRoomKeyHex(msg.keyHex);
+        console.log('[RealtimeBenchmark] room joined', msg.roomId);
         toast.success(`Joined room ${msg.roomId}`);
         break;
       case 'peer-joined':
@@ -280,8 +267,8 @@ export default function RealtimeBenchmarkPage() {
     try {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      debugLog('createAndSendOffer - sending offer');
-      sendSignalingMessage({ type: 'signal', roomId: currentRoom, data: { type: 'offer', sdp: offer.sdp } });
+      console.log('[RealtimeBenchmark] offer created');
+      sendSignalingMessage({ type: 'signal', roomId: currentRoomRef.current, data: { type: 'offer', sdp: offer.sdp } });
     } catch (err) { console.error(err); }
   }
 
@@ -292,16 +279,18 @@ export default function RealtimeBenchmarkPage() {
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     debugLog('onReceiveOffer - sending answer');
-    sendSignalingMessage({ type: 'signal', roomId: currentRoom, data: { type: 'answer', sdp: answer.sdp } });
+    sendSignalingMessage({ type: 'signal', roomId: currentRoomRef.current, data: { type: 'answer', sdp: answer.sdp } });
   }
 
   async function onReceiveAnswer(sdp: string) {
+    console.log('[RealtimeBenchmark] answer received');
     const pc = pcRef.current;
     if (!pc) return;
     await pc.setRemoteDescription({ type: 'answer', sdp });
   }
 
   async function onReceiveIce(candidate: any) {
+    console.log('[RealtimeBenchmark] ICE candidate received', candidate);
     const pc = pcRef.current;
     if (!pc || !candidate) return;
     try { await pc.addIceCandidate(candidate); } catch (err) { console.warn('Invalid ICE candidate', err); }
@@ -313,8 +302,8 @@ export default function RealtimeBenchmarkPage() {
 
     pc.onicecandidate = (ev) => {
       if (ev.candidate) {
-        debugLog('onicecandidate - sending', ev.candidate);
-        sendSignalingMessage({ type: 'signal', roomId: currentRoom, data: { type: 'ice', candidate: ev.candidate } });
+        console.log('[RealtimeBenchmark] ICE candidate sent', ev.candidate);
+        sendSignalingMessage({ type: 'signal', roomId: currentRoomRef.current, data: { type: 'ice', candidate: ev.candidate } });
       }
     };
 
@@ -343,7 +332,7 @@ export default function RealtimeBenchmarkPage() {
   }
 
   function tryAttachTransforms(pc: RTCPeerConnection) {
-    const keyHex = roomKeyHex;
+    const keyHex = roomKeyHexRef.current;
     if (!keyHex) return;
     const key = hexToBytes(keyHex);
 
@@ -399,13 +388,13 @@ export default function RealtimeBenchmarkPage() {
   }
 
   async function handleCreateRoom() {
-    debugLog('handleCreateRoom click');
+    console.log('[RealtimeBenchmark] create room click');
     sendSignalingMessage({ type: 'create' });
   }
 
   async function handleJoinRoom() {
     if (!roomId) return toast.error('Enter room id');
-    debugLog('handleJoinRoom click, roomId=', roomId);
+    console.log('[RealtimeBenchmark] join room click', roomId);
     if (!pcRef.current) await createPeerConnection();
     sendSignalingMessage({ type: 'join', roomId });
   }
@@ -436,6 +425,7 @@ export default function RealtimeBenchmarkPage() {
           <button onClick={handleJoinRoom} className="btn-secondary">Join Room</button>
         </div>
         <div className="ml-auto">
+          <div>Signaling status: <strong style={{ color: wsStatus === 'CONNECTED' ? '#16a34a' : wsStatus === 'CONNECTING' ? '#ca8a04' : '#dc2626' }}>{wsStatus}</strong></div>
           <div>Current room: <strong>{currentRoom ?? '-'}</strong></div>
           <div>Connected: <strong>{connectedPeer ? 'Yes' : 'No'}</strong></div>
           <div>Active algorithm: <strong>ChaCha20</strong></div>
