@@ -7,6 +7,7 @@ import { chaCha20Encrypt, chaCha20Decrypt } from '../algorithms/chacha20';
 
 // Worker (bundled by Vite)
 const BenchmarkWorker = new Worker(new URL('../workers/benchmarkWorker.ts', import.meta.url), { type: 'module' });
+console.log("[BENCHMARK] Worker started");
 
 function debugLog(...args: unknown[]) {
   console.log('[RealtimeBenchmark]', ...args);
@@ -62,6 +63,7 @@ export default function RealtimeBenchmarkPage() {
   useEffect(() => {
     BenchmarkWorker.onmessage = (ev) => {
       const msg = ev.data;
+      console.log("[BENCHMARK] Results received", msg);
       if (msg.type !== 'result') return;
       const now = Date.now();
       for (const r of msg.results) {
@@ -85,6 +87,7 @@ export default function RealtimeBenchmarkPage() {
         out[algo] = { encrypt: parseFloat(enc.toFixed(3)), decrypt: parseFloat(dec.toFixed(3)), throughput: parseFloat(th.toFixed(3)) };
       }
       setStats(out);
+      console.log("[BENCHMARK] State updated");
     }, 1000);
 
     return () => {
@@ -226,12 +229,14 @@ export default function RealtimeBenchmarkPage() {
         updateRoomKeyHex(msg.keyHex);
         console.log('[RealtimeBenchmark] room created', msg.roomId);
         toast.success(`Room ${msg.roomId} created`);
+        if (pcRef.current) tryAttachTransforms(pcRef.current);
         break;
       case 'joined':
         updateCurrentRoom(msg.roomId);
         updateRoomKeyHex(msg.keyHex);
         console.log('[RealtimeBenchmark] room joined', msg.roomId);
         toast.success(`Joined room ${msg.roomId}`);
+        if (pcRef.current) tryAttachTransforms(pcRef.current);
         break;
       case 'peer-joined':
         setConnectedPeer(true);
@@ -297,7 +302,10 @@ export default function RealtimeBenchmarkPage() {
   }
 
   async function createPeerConnection() {
-    const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+    const pc = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+      encodedInsertableStreams: true, // Enable Insertable Streams
+    } as any);
     pcRef.current = pc;
 
     pc.onicecandidate = (ev) => {
@@ -309,6 +317,8 @@ export default function RealtimeBenchmarkPage() {
 
     pc.ontrack = (ev) => {
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = ev.streams[0];
+      console.log('[RealtimeBenchmark] ontrack received, attaching receiver transform');
+      tryAttachTransforms(pc);
     };
 
     // Add local tracks
@@ -319,29 +329,43 @@ export default function RealtimeBenchmarkPage() {
     }
 
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'connected') setConnectedPeer(true);
+      if (pc.connectionState === 'connected') {
+        setConnectedPeer(true);
+        console.log('[RealtimeBenchmark] connectionState connected, attaching transforms');
+        tryAttachTransforms(pc);
+      }
       if (pc.connectionState === 'disconnected' || pc.connectionState === 'closed') setConnectedPeer(false);
     };
 
     // Attach Insertable Streams transforms if available
+    tryAttachTransforms(pc);
     setTimeout(() => {
       tryAttachTransforms(pc);
     }, 500);
+    setTimeout(() => {
+      tryAttachTransforms(pc);
+    }, 1500);
 
     return pc;
   }
 
   function tryAttachTransforms(pc: RTCPeerConnection) {
     const keyHex = roomKeyHexRef.current;
-    if (!keyHex) return;
+    if (!keyHex) {
+      console.log('[RealtimeBenchmark] tryAttachTransforms - no roomKeyHex yet, skipping attach');
+      return;
+    }
     const key = hexToBytes(keyHex);
 
     // Sender side transform (encrypt before sending)
     const senders = pc.getSenders();
     for (const sender of senders) {
+      if (!sender.track || (sender as any).hasTransformAttached) continue;
       try {
         const cs = (sender as any).createEncodedStreams?.();
         if (!cs) continue;
+        (sender as any).hasTransformAttached = true;
+        console.log('[RealtimeBenchmark] Attaching transform to sender for track:', sender.track.kind);
         const transformer = new TransformStream({
           transform: (chunk: any, controller: any) => {
             try {
@@ -349,6 +373,7 @@ export default function RealtimeBenchmarkPage() {
               // copy for worker
               const copy = data.slice().buffer;
               BenchmarkWorker.postMessage({ type: 'benchmark', data: copy }, [copy]);
+              console.log("[BENCHMARK] Chunk sent");
 
               const nonce = makeNonceFromTimestamp(chunk.timestamp ?? Date.now());
               const res = chaCha20Encrypt(data, key, nonce);
@@ -366,9 +391,12 @@ export default function RealtimeBenchmarkPage() {
     // Receiver side transform (decrypt before decode)
     const receivers = pc.getReceivers();
     for (const receiver of receivers) {
+      if (!receiver.track || (receiver as any).hasTransformAttached) continue;
       try {
         const cs = (receiver as any).createEncodedStreams?.();
         if (!cs) continue;
+        (receiver as any).hasTransformAttached = true;
+        console.log('[RealtimeBenchmark] Attaching transform to receiver for track:', receiver.track.kind);
         const transformer = new TransformStream({
           transform: (chunk: any, controller: any) => {
             try {
@@ -398,6 +426,14 @@ export default function RealtimeBenchmarkPage() {
     if (!pcRef.current) await createPeerConnection();
     sendSignalingMessage({ type: 'join', roomId });
   }
+
+  const chartData = Object.entries(stats).map(([k, v]) => ({
+    algorithm: k,
+    encrypt: v.encrypt,
+    decrypt: v.decrypt,
+    throughput: v.throughput,
+  }));
+  console.log("[BENCHMARK] Chart data", chartData);
 
   return (
     <div className="space-y-6">
@@ -437,7 +473,7 @@ export default function RealtimeBenchmarkPage() {
           <h3 className="font-semibold">Encryption Time (ms)</h3>
           <div className="mt-2">
             <ResponsiveContainer width="100%" height={160}>
-              <BarChart data={Object.entries(stats).map(([k,v]) => ({ algorithm: k, value: v.encrypt }))}>
+              <BarChart data={chartData.map(x => ({ algorithm: x.algorithm, value: x.encrypt }))}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="algorithm" />
                 <YAxis />
@@ -452,7 +488,7 @@ export default function RealtimeBenchmarkPage() {
           <h3 className="font-semibold">Decryption Time (ms)</h3>
           <div className="mt-2">
             <ResponsiveContainer width="100%" height={160}>
-              <BarChart data={Object.entries(stats).map(([k,v]) => ({ algorithm: k, value: v.decrypt }))}>
+              <BarChart data={chartData.map(x => ({ algorithm: x.algorithm, value: x.decrypt }))}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="algorithm" />
                 <YAxis />
@@ -467,7 +503,7 @@ export default function RealtimeBenchmarkPage() {
           <h3 className="font-semibold">Throughput (MB/s)</h3>
           <div className="mt-2">
             <ResponsiveContainer width="100%" height={160}>
-              <BarChart data={Object.entries(stats).map(([k,v]) => ({ algorithm: k, value: v.throughput }))}>
+              <BarChart data={chartData.map(x => ({ algorithm: x.algorithm, value: x.throughput }))}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="algorithm" />
                 <YAxis />
