@@ -7,19 +7,20 @@ import { asconEncrypt } from '../algorithms/ascon';
 type WorkerRequest = {
   type: 'benchmark';
   data: ArrayBuffer;
+  frameId: string;
+  captureTs: number;
 };
 
 type AlgoResult = {
   algorithm: string;
+  frameId: string;
+  captureTs: number;
   dataSize: number;
   encryptTime: number;
   decryptTime: number;
   throughput: number;
+  ciphertextHex: string;
 };
-
-function bytesToHex(bytes: Uint8Array) {
-  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-}
 
 function normalizeKey(size: number): Uint8Array {
   const k = new Uint8Array(size);
@@ -28,7 +29,10 @@ function normalizeKey(size: number): Uint8Array {
   return k;
 }
 
+console.log('[BENCHMARK] Worker initialized');
+
 self.addEventListener('message', async (ev: MessageEvent) => {
+  console.log('[BENCHMARK] Worker received message', ev.data);
   const msg = ev.data as WorkerRequest;
   if (msg.type !== 'benchmark') return;
 
@@ -48,7 +52,16 @@ self.addEventListener('message', async (ev: MessageEvent) => {
     const t2 = performance.now();
     triviumEncrypt(enc.ciphertext, keyT, nonceT);
     const t3 = performance.now();
-    results.push({ algorithm: 'trivium', dataSize: size, encryptTime: dtEnc, decryptTime: t3 - t2, throughput: (size / (1024*1024)) / (dtEnc/1000) });
+    results.push({
+      algorithm: 'trivium',
+      frameId: msg.frameId,
+      captureTs: msg.captureTs,
+      dataSize: size,
+      encryptTime: dtEnc,
+      decryptTime: t3 - t2,
+      throughput: (size / (1024 * 1024)) / (dtEnc / 1000),
+      ciphertextHex: Array.from(enc.ciphertext).map(b => b.toString(16).padStart(2, '0')).join(''),
+    });
   } catch (err) {}
 
   // Grain
@@ -62,7 +75,16 @@ self.addEventListener('message', async (ev: MessageEvent) => {
     const t2 = performance.now();
     grain128Encrypt(enc.ciphertext, key, nonce);
     const t3 = performance.now();
-    results.push({ algorithm: 'grain128aead', dataSize: size, encryptTime: dtEnc, decryptTime: t3 - t2, throughput: (size / (1024*1024)) / (dtEnc/1000) });
+    results.push({
+      algorithm: 'grain128aead',
+      frameId: msg.frameId,
+      captureTs: msg.captureTs,
+      dataSize: size,
+      encryptTime: dtEnc,
+      decryptTime: t3 - t2,
+      throughput: (size / (1024 * 1024)) / (dtEnc / 1000),
+      ciphertextHex: Array.from(enc.ciphertext).map(b => b.toString(16).padStart(2, '0')).join(''),
+    });
   } catch (err) {}
 
   // MICKEY
@@ -76,7 +98,16 @@ self.addEventListener('message', async (ev: MessageEvent) => {
     const t2 = performance.now();
     mickeyEncrypt(enc.ciphertext, key, nonce);
     const t3 = performance.now();
-    results.push({ algorithm: 'mickey', dataSize: size, encryptTime: dtEnc, decryptTime: t3 - t2, throughput: (size / (1024*1024)) / (dtEnc/1000) });
+    results.push({
+      algorithm: 'mickey',
+      frameId: msg.frameId,
+      captureTs: msg.captureTs,
+      dataSize: size,
+      encryptTime: dtEnc,
+      decryptTime: t3 - t2,
+      throughput: (size / (1024 * 1024)) / (dtEnc / 1000),
+      ciphertextHex: Array.from(enc.ciphertext).map(b => b.toString(16).padStart(2, '0')).join(''),
+    });
   } catch (err) {}
 
   // ChaCha20
@@ -90,7 +121,16 @@ self.addEventListener('message', async (ev: MessageEvent) => {
     const t2 = performance.now();
     chaCha20Encrypt(enc.ciphertext, key, nonce);
     const t3 = performance.now();
-    results.push({ algorithm: 'chacha20', dataSize: size, encryptTime: dtEnc, decryptTime: t3 - t2, throughput: (size / (1024*1024)) / (dtEnc/1000) });
+    results.push({
+      algorithm: 'chacha20',
+      frameId: msg.frameId,
+      captureTs: msg.captureTs,
+      dataSize: size,
+      encryptTime: dtEnc,
+      decryptTime: t3 - t2,
+      throughput: (size / (1024 * 1024)) / (dtEnc / 1000),
+      ciphertextHex: Array.from(enc.ciphertext).map(b => b.toString(16).padStart(2, '0')).join(''),
+    });
   } catch (err) {}
 
   // Ascon
@@ -104,8 +144,18 @@ self.addEventListener('message', async (ev: MessageEvent) => {
     const t2 = performance.now();
     asconEncrypt(enc.ciphertext, key, nonce);
     const t3 = performance.now();
-    results.push({ algorithm: 'ascon', dataSize: size, encryptTime: dtEnc, decryptTime: t3 - t2, throughput: (size / (1024*1024)) / (dtEnc/1000) });
+    results.push({
+      algorithm: 'ascon',
+      frameId: msg.frameId,
+      captureTs: msg.captureTs,
+      dataSize: size,
+      encryptTime: dtEnc,
+      decryptTime: t3 - t2,
+      throughput: (size / (1024 * 1024)) / (dtEnc / 1000),
+      ciphertextHex: Array.from(enc.ciphertext).map(b => b.toString(16).padStart(2, '0')).join(''),
+    });
   } catch (err) {}
 
+  console.log('[BENCHMARK] Worker computed results', results);
   self.postMessage({ type: 'result', results });
 });

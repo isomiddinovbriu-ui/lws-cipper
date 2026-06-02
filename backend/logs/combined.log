@@ -271,3 +271,51 @@
 2026-05-04 18:34:45 [info]: Encrypting 6 bytes with algorithms: grain128aead
 2026-05-04 18:34:59 [info]: POST /api/crypto/encrypt/file - ::1
 2026-05-04 18:34:59 [info]: Encrypting file: image.mp4 (3114374 bytes) with grain128aead
+2026-06-02 13:44:12 [info]: 🔐 Crypto Platform API running on http://localhost:3099
+2026-06-02 13:44:12 [info]: 📚 API Docs available at http://localhost:3099/api-docs
+2026-06-02 13:44:12 [info]: WebSocket signaling server initialized at /ws
+2026-06-02 13:44:18 [info]: WS connected: 5b2840a5-aca5-4efd-9bd3-d9257e71e6a1
+2026-06-02 13:44:20 [info]: Room created 5JLHN3 by 5b2840a5-aca5-4efd-9bd3-d9257e71e6a1
+2026-06-02 13:47:52 [info]: WS disconnected: 5b2840a5-aca5-4efd-9bd3-d9257e71e6a1
+2026-06-02 13:57:06 [info]: WS connected: 0ee18ca2-69e4-4897-a1b6-7214301726a8
+2026-06-02 13:57:10 [info]: Room created AU9ITK by 0ee18ca2-69e4-4897-a1b6-7214301726a8
+2026-06-02 13:57:37 [info]: WS connected: 6adc462d-ee9b-45a9-9611-09791d524e3f
+2026-06-02 13:57:48 [info]: 6adc462d-ee9b-45a9-9611-09791d524e3f joined room AU9ITK
+2026-06-02 13:59:54 [info]: WS disconnected: 6adc462d-ee9b-45a9-9611-09791d524e3f
+2026-06-02 13:59:55 [info]: WS connected: d81e913c-e3a6-49f6-984e-f711ccc13583
+2026-06-02 13:59:59 [info]: Room created F304SU by d81e913c-e3a6-49f6-984e-f711ccc13583
+2026-06-02 14:00:06 [info]: WS disconnected: 0ee18ca2-69e4-4897-a1b6-7214301726a8
+2026-06-02 14:00:06 [info]: WS connected: 794ff4ba-7b7f-4166-9aa8-e94bbaedb595
+2026-06-02 14:00:08 [info]: 794ff4ba-7b7f-4166-9aa8-e94bbaedb595 joined room F304SU
+2026-06-02 14:01:22 [info]: WS disconnected: 794ff4ba-7b7f-4166-9aa8-e94bbaedb595
+2026-06-02 14:01:23 [info]: WS disconnected: d81e913c-e3a6-49f6-984e-f711ccc13583
+2026-06-02 14:01:23 [info]: WS connected: 71aec054-f7a9-47d1-917d-a3cf35705f03
+2026-06-02 14:01:23 [info]: WS connected: 19874200-b929-4d15-a306-71dbbe1ec0a0
+2026-06-02 14:01:27 [info]: Room created UUS1J7 by 19874200-b929-4d15-a306-71dbbe1ec0a0
+2026-06-02 14:01:33 [info]: 71aec054-f7a9-47d1-917d-a3cf35705f03 joined room UUS1J7
+2026-06-02 14:04:15 [info]: WS disconnected: 71aec054-f7a9-47d1-917d-a3cf35705f03
+2026-06-02 14:04:21 [info]: Room created 2F6NB5 by 19874200-b929-4d15-a306-71dbbe1ec0a0
+2026-06-02 14:04:31 [info]: 19874200-b929-4d15-a306-71dbbe1ec0a0 joined room 2F6NB5
+2026-06-02 14:04:34 [info]: WS disconnected: 19874200-b929-4d15-a306-71dbbe1ec0a0
+2026-06-02 14:16:31 [info]: WS connected: 4c30e49b-06d3-4146-a6ee-3f73aaa2fd94
+2026-06-02 14:16:40 [info]: WS connected: fde9b159-f593-48ca-ac87-34c03d8adb2e
+2026-06-02 14:16:43 [info]: Room created FBGDUT by fde9b159-f593-48ca-ac87-34c03d8adb2e
+2026-06-02 14:16:47 [info]: 4c30e49b-06d3-4146-a6ee-3f73aaa2fd94 joined room FBGDUT
+2026-06-02 14:18:11 [info]: Room created MMKO3C by fde9b159-f593-48ca-ac87-34c03d8adb2e
+2026-06-02 14:18:17 [info]: fde9b159-f593-48ca-ac87-34c03d8adb2e joined room MMKO3C
+2026-06-02 14:22:32 [info]: WS disconnected: 4c30e49b-06d3-4146-a6ee-3f73aaa2fd94
+2026-06-02 14:22:33 [info]: WS connected: 4805f34a-8f51-4c00-a165-23978745848c
+2026-06-02 14:22:34 [info]: WS disconnected: fde9b159-f593-48ca-ac87-34c03d8adb2e
+2026-06-02 14:22:34 [info]: WS connected: d13f0dea-77f5-4e82-b783-fbe206d40a85
+2026-06-02 14:22:36 [info]: Room created EZHYGQ by d13f0dea-77f5-4e82-b783-fbe206d40a85
+2026-06-02 14:22:40 [info]: 4805f34a-8f51-4c00-a165-23978745848c joined room EZHYGQ
+2026-06-02 14:23:08 [info]: GET /api/crypto/algorithms - ::ffff:127.0.0.1
+2026-06-02 14:23:08 [info]: GET /api/crypto/algorithms - ::ffff:127.0.0.1
+2026-06-02 14:23:12 [info]: POST /api/crypto/benchmark - ::ffff:127.0.0.1
+2026-06-02 14:23:12 [info]: Starting benchmark suite...
+2026-06-02 14:25:01 [info]: WS disconnected: 4805f34a-8f51-4c00-a165-23978745848c
+2026-06-02 14:25:01 [info]: WS connected: de75d253-8f87-4ff3-8218-2b6e21e57973
+2026-06-02 14:25:04 [info]: WS disconnected: d13f0dea-77f5-4e82-b783-fbe206d40a85
+2026-06-02 14:25:05 [info]: WS connected: 8e9c8826-af5b-4f81-a09f-ae7d7c6ad5fa
+2026-06-02 14:25:06 [info]: Room created JRRBEY by 8e9c8826-af5b-4f81-a09f-ae7d7c6ad5fa
+2026-06-02 14:25:09 [info]: de75d253-8f87-4ff3-8218-2b6e21e57973 joined room JRRBEY
