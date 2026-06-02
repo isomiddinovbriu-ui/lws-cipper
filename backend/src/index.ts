@@ -7,6 +7,7 @@ import rateLimit from 'express-rate-limit';
 import swaggerUi from 'swagger-ui-express';
 import path from 'path';
 import fs from 'fs';
+import http from 'http';
 
 import { cryptoRouter } from './routes/crypto';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
@@ -26,7 +27,7 @@ app.use(helmet({
 
 // CORS - allow frontend dev server
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') ?? ['http://localhost:5173', 'http://localhost:3000'],
+  origin: process.env.ALLOWED_ORIGINS?.split(',') ?? ['http://0.0.0.0:5173', 'http://0.0.0.0:3000'],
   credentials: true,
 }));
 
@@ -59,7 +60,7 @@ const swaggerDocument = {
     description: 'Lightweight Cryptographic Algorithms Analysis Platform',
     contact: { email: 'admin@crypto-platform.local' },
   },
-  servers: [{ url: `http://localhost:${PORT}`, description: 'Development server' }],
+  servers: [{ url: `http://0.0.0.0:${PORT}`, description: 'Development server' }],
   tags: [
     { name: 'Crypto', description: 'Encryption and decryption operations' },
     { name: 'Benchmark', description: 'Performance benchmarking' },
@@ -167,7 +168,15 @@ app.get('/', (_req, res) => {
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-app.listen(PORT, () => {
+// Create HTTP server and attach WebSocket signaling
+const server = http.createServer(app);
+
+// Initialize WebSocket signaling (lazy import to avoid circulars)
+import('./signaling').then(({ initSignaling }) => initSignaling(server)).catch(err => {
+  logger.warn('Failed to initialize signaling server', err?.message ?? err);
+});
+
+server.listen(PORT, () => {
   logger.info(`🔐 Crypto Platform API running on http://localhost:${PORT}`);
   logger.info(`📚 API Docs available at http://localhost:${PORT}/api-docs`);
 });
