@@ -403,8 +403,8 @@ export default function BenchmarkPage() {
                       <td className="py-3 px-3 font-mono text-slate-300">{run.decryptTime.toFixed(3)} ms</td>
                       <td className="py-3 px-3 font-mono text-primary-300">{run.throughputEnc.toFixed(4)} MB/s</td>
                       <td className="py-3 px-3 font-mono text-violet-300">{run.throughputDec.toFixed(4)} MB/s</td>
-                      <td className="py-3 px-3 font-mono text-slate-400">{run.memoryUsed.toFixed(2)} MB</td>
-                      <td className="py-3 px-3 font-mono text-amber-300">{run.cpuApprox.toFixed(2)}%</td>
+                      <td className="py-3 px-3 font-mono text-slate-400">{run.memoryUsed.toFixed(4)} MB</td>
+                      <td className="py-3 px-3 font-mono text-amber-300">{run.cpuApprox.toFixed(5)}%</td>
                     </tr>
                   ))}
               </tbody>

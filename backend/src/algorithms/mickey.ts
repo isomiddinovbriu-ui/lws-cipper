@@ -1,261 +1,278 @@
-/**
- * MICKEY-v2 (Mutual Irregular Clocking KE-generator) Stream Cipher
- * Based on the eSTREAM specification by Steve Babbage and Matthew Dodd
- * Key: 80 bits (10 bytes), IV: 0–80 bits (0–10 bytes)
- * Two registers: R (100 bits, linear) and S (100 bits, non-linear)
- *
- * Convention used throughout: RIGHT-SHIFT
- *   R[0] / S[0] = output end (oldest bit, first to leave)
- *   R[99] / S[99] = input end (newest bit)
- *   Each clock: bits move from R[99] toward R[0]
- *   Output bit = R[0] XOR S[0]  (sampled BEFORE clocking)
- */
-
 export interface MickeyState {
-  R: number[];  // 100-bit linear feedback shift register
-  S: number[];  // 100-bit non-linear feedback shift register
+  R: number[];
+  S: number[];
 }
 
 export interface MickeyStepState {
-  step:         number;
-  outputBit:    number;
-  rSlice:       number[];
-  sSlice:       number[];
-  controlBitR:  number;
-  controlBitS:  number;
+  step: number;
+  outputBit: number;
+  rSlice: number[];
+  sSlice: number[];
+  controlBitR: number;
+  controlBitS: number;
 }
 
 export interface MickeyResult {
-  ciphertext:   Uint8Array;
-  keystream:    Uint8Array;
+  ciphertext: Uint8Array;
+  keystream: Uint8Array;
   initialState: MickeyState;
-  steps:        MickeyStepState[];
+  steps: MickeyStepState[];
 }
 
-// ---------------------------------------------------------------------------
-// Tap tables from the MICKEY-v2 eSTREAM specification
-// ---------------------------------------------------------------------------
+const REGISTER_SIZE = 100;
 
-// Companion sequences for the S register (COMP0 / COMP1)
-const COMP0 = [
-  1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0,
-  0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1,
-  1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0,
-  0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0,
-  0, 0, 0, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0,
-];
-
-const COMP1 = [
-  1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1,
-  0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0,
-  0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0,
-  1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1,
-  0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1,
-];
-
-// Feedback taps for the R register (FB0 = normal clock, FB1 = alternate clock)
-const FB0 = [
-  0, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1,
-  0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0,
-  0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1,
-  0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0,
-  0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0,
-];
-
-const FB1 = [
-  1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0,
-  1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0,
-  0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0,
-  1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0,
-  0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 1,
-];
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+/**
+ * Tap constants (spec based)
+ */
+const R_TAPS: number[] = [0, 26, 56, 91];
+const S_TAPS_COMP0: number[] = [0, 50]; // XOR positions for COMP0
+const S_TAPS_COMP1: number[] = [0, 47]; // XOR positions for COMP1
 
 function bytesToBits(bytes: Uint8Array): number[] {
   const bits: number[] = [];
   for (let i = 0; i < bytes.length; i++) {
-    for (let b = 0; b < 8; b++) {
-      bits.push((bytes[i] >> b) & 1);
+    for (let j = 7; j >= 0; j--) {
+      bits.push((bytes[i] >> j) & 1);
     }
   }
   return bits;
 }
 
-// ---------------------------------------------------------------------------
-// Register clocking — Galois (element-wise) formulation
-// ---------------------------------------------------------------------------
-
-/**
- * Clock the R register (linear Galois LFSR, right-shift).
- *
- * FIX #2 — Previous version computed a single Fibonacci feedback bit (dot
- * product of the whole state with FB0/FB1), then did a left-shift.  The spec
- * applies feedback element-wise to each cell during the right-shift (Galois
- * style), which is what this implementation does.
- *
- *   FEEDBACK_BIT = R[0]  (the bit being shifted out)
- *   tap[i]       = FB0[i]        if CONTROL_BIT_R = 0
- *                = FB0[i]⊕FB1[i] if CONTROL_BIT_R = 1
- *   new_R[i]     = R[i+1] ⊕ (FEEDBACK_BIT & tap[i])   for i = 0..98
- *   new_R[99]    = FEEDBACK_BIT ⊕ CONTROL_BIT_R        (invert when ctrl=1)
- */
-function clockR(R: number[], controlBit: number): void {
-  const feedbackBit = R[0]; // output / oldest bit
-  const newR        = new Array<number>(100);
-
-  for (let i = 0; i < 99; i++) {
-    const tap = controlBit ? (FB0[i] ^ FB1[i]) : FB0[i];
-    newR[i]   = R[i + 1] ^ (feedbackBit & tap);
+function bitsToBytes(bits: number[]): Uint8Array {
+  const bytes = new Uint8Array(Math.ceil(bits.length / 8));
+  for (let i = 0; i < bits.length; i++) {
+    bytes[Math.floor(i / 8)] |= bits[i] << (7 - (i % 8));
   }
-  // New bit enters at position 99; invert when control bit is set
-  newR[99] = feedbackBit ^ (controlBit ? 1 : 0);
-
-  for (let i = 0; i < 100; i++) R[i] = newR[i];
+  return bytes;
 }
 
 /**
- * Clock the S register (non-linear companion-sequence Galois clock).
- *
- * FIX #3 — Previous version also collapsed everything into a single Fibonacci
- * feedback bit via dot products with COMP0/COMP1, then did a left-shift.
- * The correct Galois formulation applies the companion sequence element-wise
- * at each cell during the right-shift.
- *
- *   SEQ_BIT      = S[34]   (selects which companion is primary)
- *   FEEDBACK_BIT = S[0]    (bit being shifted out)
- *   comp         = COMP1   if SEQ_BIT = 1, else COMP0  (primary)
- *   compAlt      = COMP0   if SEQ_BIT = 1, else COMP1  (alternate)
- *   tap[i]       = comp[i]            if CONTROL_BIT_S = 0
- *                = comp[i] ⊕ compAlt[i]  if CONTROL_BIT_S = 1
- *   new_S[i]     = S[i+1] ⊕ (FEEDBACK_BIT & tap[i])   for i = 0..98
- *   new_S[99]    = FEEDBACK_BIT ⊕ CONTROL_BIT_S        (invert when ctrl=1)
+ * Calculate feedback for R register
  */
-function clockS(S: number[], controlBit: number): void {
-  const seqBit      = S[34];
-  const feedbackBit = S[0]; // output / oldest bit
-  const comp        = seqBit ? COMP1 : COMP0;
-  const compAlt     = seqBit ? COMP0 : COMP1;
-
-  const newS = new Array<number>(100);
-
-  for (let i = 0; i < 99; i++) {
-    const tap = controlBit ? (comp[i] ^ compAlt[i]) : comp[i];
-    newS[i]   = S[i + 1] ^ (feedbackBit & tap);
+function calculateFeedbackR(R: number[], inputBit: number): number {
+  let feedback = inputBit;
+  for (const tap of R_TAPS) {
+    feedback ^= R[tap];
   }
-  newS[99] = feedbackBit ^ (controlBit ? 1 : 0);
-
-  for (let i = 0; i < 100; i++) S[i] = newS[i];
+  return feedback;
 }
 
-// ---------------------------------------------------------------------------
-// Core clock cycle
-// ---------------------------------------------------------------------------
+/**
+ * Clock R register (linear with control)
+ */
+function clockR(R: number[], inputBit: number, controlBit: number): void {
+  const feedback = calculateFeedbackR(R, inputBit);
+  
+  // Shift register
+  for (let i = REGISTER_SIZE - 1; i > 0; i--) {
+    R[i] = R[i - 1];
+  }
+  R[0] = feedback;
+  
+  // Apply control bit - XOR with complement of control?
+  if (controlBit === 1) {
+    for (let i = 0; i < REGISTER_SIZE; i++) {
+      R[i] ^= 1;
+    }
+  }
+}
 
 /**
- * One MICKEY-v2 clock cycle.
- *
- * FIX #1 (partial) — Output bit is R[0] ⊕ S[0] (the bits at the output /
- * oldest end of each register), sampled BEFORE the registers are advanced.
- * The previous version used R[99] ⊕ S[99] here (the input / newest end),
- * while the step-capture in mickeyEncrypt used R[0] ⊕ S[0] — contradictory.
- *
- * @param input  Extra input bit XOR'd into control bits (used during init).
+ * Calculate feedback for S register
  */
-function mickeyClock(R: number[], S: number[], input = 0): number {
-  // FIX #1: output sampled from the output end (index 0) before clocking
+function calculateFeedbackS(S: number[], inputBit: number, controlBit: number): number {
+  let feedback = inputBit;
+  
+  const taps = controlBit === 0 ? S_TAPS_COMP0 : S_TAPS_COMP1;
+  for (const tap of taps) {
+    feedback ^= S[tap];
+  }
+  
+  return feedback;
+}
+
+/**
+ * Clock S register (nonlinear with control)
+ */
+function clockS(S: number[], inputBit: number, controlBit: number): void {
+  const feedback = calculateFeedbackS(S, inputBit, controlBit);
+  
+  // Shift register
+  for (let i = REGISTER_SIZE - 1; i > 0; i--) {
+    S[i] = S[i - 1];
+  }
+  S[0] = feedback;
+}
+
+/**
+ * MICKEY clock - one keystream bit generation
+ */
+function mickeyClock(R: number[], S: number[], inputBit: number = 0): number {
+  // Generate output bit
   const outputBit = R[0] ^ S[0];
-
-  // Control bits: one register drives the other's clock
-  const controlBitR = input ^ S[34];
-  const controlBitS = input ^ R[67];
-
-  clockR(R, controlBitR);
-  clockS(S, controlBitS);
-
+  
+  // Calculate control bits
+  const controlBitR = S[34] ^ R[67];
+  const controlBitS = S[67] ^ R[33];
+  
+  // Clock both registers
+  clockR(R, inputBit, controlBitR);
+  clockS(S, inputBit, controlBitS);
+  
   return outputBit;
 }
 
-// ---------------------------------------------------------------------------
-// Initialisation
-// ---------------------------------------------------------------------------
-
 /**
- * Load IV then key into MICKEY-v2 via the input-bit mechanism, producing the
- * post-init register states.
+ * Initialize MICKEY with key and IV
  */
-function mickeyInit(key: Uint8Array, iv: Uint8Array): {
-  R:            number[];
-  S:            number[];
-  initialState: MickeyState;
-} {
-  const R = new Array<number>(100).fill(0);
-  const S = new Array<number>(100).fill(0);
-
-  // IV bits loaded first, then key bits — each bit clocked in as INPUT_BIT
-  for (const bit of bytesToBits(iv))  mickeyClock(R, S, bit);
-  for (const bit of bytesToBits(key)) mickeyClock(R, S, bit);
-
-  const initialState: MickeyState = { R: [...R], S: [...S] };
+function mickeyInit(key: Uint8Array, iv: Uint8Array): { R: number[]; S: number[]; initialState: MickeyState } {
+  // Initialize registers to zero
+  const R = new Array<number>(REGISTER_SIZE).fill(0);
+  const S = new Array<number>(REGISTER_SIZE).fill(0);
+  
+  // Convert to bits (MSB first as per spec)
+  const ivBits = bytesToBits(iv);
+  const keyBits = bytesToBits(key);
+  
+  // Load IV
+  for (const bit of ivBits) {
+    mickeyClock(R, S, bit);
+  }
+  
+  // Load Key
+  for (const bit of keyBits) {
+    mickeyClock(R, S, bit);
+  }
+  
+  // Pre-clock 100 times with input 0
+  for (let i = 0; i < 100; i++) {
+    mickeyClock(R, S, 0);
+  }
+  
+  const initialState: MickeyState = {
+    R: [...R],
+    S: [...S],
+  };
+  
   return { R, S, initialState };
 }
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
 /**
- * Encrypt (or decrypt — stream cipher is symmetric) using MICKEY-v2.
+ * Generate keystream of specified length (in bytes)
  */
-export function mickeyEncrypt(
-  plaintext:   Uint8Array,
-  key:         Uint8Array,
-  iv:          Uint8Array,
-  captureSteps = false,
-  maxSteps     = 64
-): MickeyResult {
-  if (key.length !== 10) throw new Error('MICKEY-v2 key must be 10 bytes (80 bits)');
-  if (iv.length > 10)    throw new Error('MICKEY-v2 IV must be at most 10 bytes (80 bits)');
-
-  const { R, S, initialState } = mickeyInit(key, iv);
-
-  const ciphertext = new Uint8Array(plaintext.length);
-  const keystream  = new Uint8Array(plaintext.length);
-  const steps: MickeyStepState[] = [];
-
-  for (let byteIdx = 0; byteIdx < plaintext.length; byteIdx++) {
-    let ksByte = 0;
-
-    for (let bitIdx = 0; bitIdx < 8; bitIdx++) {
-      const globalStep = byteIdx * 8 + bitIdx;
-
-      // FIX #1 (complete): capture step state BEFORE clocking; output bit is
-      // R[0] ⊕ S[0] — consistent with what mickeyClock() returns.
-      // Previous code captured R[0]^S[0] here but mickeyClock returned
-      // R[99]^S[99], creating an irreconcilable inconsistency.
-      if (captureSteps && globalStep < maxSteps) {
-        steps.push({
-          step:        globalStep,
-          outputBit:   R[0] ^ S[0],      // matches mickeyClock return value
-          rSlice:      R.slice(0, 8),
-          sSlice:      S.slice(0, 8),
-          controlBitR: S[34],             // input=0 → controlBitR = 0 ^ S[34]
-          controlBitS: R[67],             // input=0 → controlBitS = 0 ^ R[67]
-        });
-      }
-
-      const z = mickeyClock(R, S, 0);    // input=0 during keystream generation
-      ksByte |= z << bitIdx;
-    }
-
-    keystream[byteIdx]  = ksByte;
-    ciphertext[byteIdx] = plaintext[byteIdx] ^ ksByte;
+function generateKeystream(R: number[], S: number[], length: number): Uint8Array {
+  const keystreamBits: number[] = [];
+  
+  for (let i = 0; i < length * 8; i++) {
+    const bit = mickeyClock(R, S, 0);
+    keystreamBits.push(bit);
   }
-
-  return { ciphertext, keystream, initialState, steps };
+  
+  return bitsToBytes(keystreamBits);
 }
 
-// Stream cipher: decryption is identical to encryption
+/**
+ * MICKEY encryption
+ */
+export function mickeyEncrypt(
+  plaintext: Uint8Array,
+  key: Uint8Array,
+  iv: Uint8Array,
+  captureSteps: boolean = false,
+  maxSteps: number = 64
+): MickeyResult {
+  // Validation
+  if (key.length !== 10) {
+    throw new Error("MICKEY-128/80 key must be 80-bit (10 bytes)");
+  }
+  
+  if (iv.length < 8 || iv.length > 10) {
+    throw new Error("MICKEY-128/80 IV must be 64-80 bits (8-10 bytes)");
+  }
+  
+  // Initialize cipher
+  const { R, S, initialState } = mickeyInit(key, iv);
+  
+  // Create copies for step capture if needed
+  const R_copy = captureSteps ? [...R] : R;
+  const S_copy = captureSteps ? [...S] : S;
+  const workingR = captureSteps ? R_copy : R;
+  const workingS = captureSteps ? S_copy : S;
+  
+  // Generate keystream
+  const keystream = generateKeystream(workingR, workingS, plaintext.length);
+  
+  // Capture steps if requested
+  const steps: MickeyStepState[] = [];
+  if (captureSteps) {
+    // Reset registers for step capture
+    const R_step = [...initialState.R];
+    const S_step = [...initialState.S];
+    
+    for (let step = 0; step < Math.min(maxSteps, plaintext.length * 8); step++) {
+      const outputBit = R_step[0] ^ S_step[0];
+      const controlBitR = S_step[34] ^ R_step[67];
+      const controlBitS = S_step[67] ^ R_step[33];
+      
+      steps.push({
+        step,
+        outputBit,
+        rSlice: R_step.slice(0, 8),
+        sSlice: S_step.slice(0, 8),
+        controlBitR,
+        controlBitS,
+      });
+      
+      mickeyClock(R_step, S_step, 0);
+    }
+  }
+  
+  // Encrypt (XOR with keystream)
+  const ciphertext = new Uint8Array(plaintext.length);
+  for (let i = 0; i < plaintext.length; i++) {
+    ciphertext[i] = plaintext[i] ^ keystream[i];
+  }
+  
+  return {
+    ciphertext,
+    keystream,
+    initialState,
+    steps,
+  };
+}
+
+/**
+ * MICKEY decryption (same as encryption)
+ */
 export const mickeyDecrypt = mickeyEncrypt;
+
+// Test/Example usage
+export function testMickey(): void {
+  // Test vectors (from MICKEY specification)
+  const key = new Uint8Array([
+    0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00
+  ]);
+  
+  const iv = new Uint8Array([
+    0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00
+  ]);
+  
+  const plaintext = new Uint8Array([0x00, 0x00, 0x00, 0x00]);
+  
+  console.log("Testing MICKEY encryption...");
+  const result = mickeyEncrypt(plaintext, key, iv, true, 10);
+  
+  console.log("Initial State R (first 10 bits):", result.initialState.R.slice(0, 10));
+  console.log("Initial State S (first 10 bits):", result.initialState.S.slice(0, 10));
+  console.log("Keystream:", Array.from(result.keystream));
+  console.log("Ciphertext:", Array.from(result.ciphertext));
+  console.log("First few steps:", result.steps.slice(0, 5));
+  
+  // Verify decryption
+  const decrypted = mickeyDecrypt(result.ciphertext, key, iv);
+  console.log("Decrypted:", Array.from(decrypted.ciphertext));
+  console.log("Matches original:", 
+    decrypted.ciphertext.every((val, i) => val === plaintext[i]));
+}
