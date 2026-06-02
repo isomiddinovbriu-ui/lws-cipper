@@ -8,6 +8,10 @@ import { chaCha20Encrypt, chaCha20Decrypt } from '../algorithms/chacha20';
 // Worker (bundled by Vite)
 const BenchmarkWorker = new Worker(new URL('../workers/benchmarkWorker.ts', import.meta.url), { type: 'module' });
 
+function debugLog(...args: unknown[]) {
+  console.log('[RealtimeBenchmark]', ...args);
+}
+
 function hexToBytes(hex: string): Uint8Array {
   const clean = hex.replace(/^0x/i, '').trim();
   const len = clean.length / 2;
@@ -88,19 +92,149 @@ export default function RealtimeBenchmarkPage() {
   useEffect(() => { startLocalMedia(); }, []);
 
   function ensureWebSocket() {
-    if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) return wsRef.current;
-    const wsUrl = (import.meta.env.VITE_WS_URL as string) ?? 'ws://0.0.0.0:3099/ws';
+    if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
+      console.debug('[ensureWebSocket] returning existing socket, readyState=', wsRef.current.readyState);
+      return wsRef.current;
+    }
+
+    const envUrl = (import.meta.env.VITE_WS_URL as string) ?? '';
+    const defaultHost = window.location.host;
+    const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const wsUrl = envUrl || `${scheme}://${defaultHost}/ws`;
+    debugLog('ensureWebSocket - creating WebSocket to', wsUrl);
     const ws = new WebSocket(wsUrl);
-    ws.onopen = () => console.info('Signaling connected');
-    ws.onmessage = (ev) => handleWsMessage(ev);
-    ws.onclose = () => console.info('Signaling closed');
-    ws.onerror = (e) => console.warn('WS error', e);
+    ws.binaryType = 'arraybuffer';
+
+    ws.addEventListener('open', () => {
+      debugLog('WS open');
+    });
+
+    ws.addEventListener('message', (ev) => {
+      try {
+        debugLog('WS receive raw', ev.data);
+        handleWsMessage(ev as MessageEvent);
+      } catch (err) {
+        debugLog('WS message handler error', err);
+      }
+    });
+
+    ws.addEventListener('close', (ev) => {
+      debugLog('WS close', ev);
+      wsRef.current = null;
+      toast.error('Signaling connection closed');
+    });
+
+    ws.addEventListener('error', (ev) => {
+      debugLog('WS error', ev);
+      toast.error('Signaling connection error');
+    });
+
     wsRef.current = ws;
     return ws;
   }
 
+  function sendSignalingMessage(obj: unknown) {
+    try {
+      const ws = ensureWebSocket();
+      if (!ws) throw new Error('no websocket');
+      const state = ws.readyState;
+      debugLog('sendSignalingMessage state=', state, 'msg=', obj);
+      const payload = JSON.stringify(obj);
+      if (state === WebSocket.OPEN) {
+        ws.send(payload);
+        debugLog('WS send', payload);
+        return true;
+      }
+
+      if (state === WebSocket.CONNECTING) {
+        debugLog('WS connecting - will send on open');
+        const onOpen = () => {
+          try { ws.send(payload); debugLog('WS send on open', payload); } catch (e) { debugLog('send on open failed', e); }
+          ws.removeEventListener('open', onOpen);
+        };
+        ws.addEventListener('open', onOpen);
+        // set fallback timeout
+        setTimeout(() => {
+          if (ws.readyState !== WebSocket.OPEN) {
+            debugLog('WS did not open in time for message', obj);
+            toast.error('Signaling not ready');
+          }
+        }, 5000);
+        return true;
+      }
+
+      debugLog('WS not open/connecting - state=', state);
+      toast.error('Signaling connection not open');
+      return false;
+    } catch (err) {
+      debugLog('sendSignalingMessage error', err);
+      toast.error('Failed to send signaling message');
+      return false;
+    }
+  }
+
+  async function ensureWebSocketOpen(timeout = 5000): Promise<WebSocket> {
+    const ws = ensureWebSocket();
+    if (!ws) throw new Error('Failed to create WebSocket');
+    if (ws.readyState === WebSocket.OPEN) {
+      console.debug('[ensureWebSocketOpen] already OPEN');
+      return ws;
+    }
+
+    if (ws.readyState === WebSocket.CONNECTING) {
+      console.debug('[ensureWebSocketOpen] waiting for CONNECTING -> OPEN');
+      return await new Promise((resolve, reject) => {
+        const onOpen = () => {
+          cleanup();
+          console.debug('[ensureWebSocketOpen] open event fired');
+          resolve(ws);
+        };
+        const onError = (e: Event) => {
+          cleanup();
+          console.warn('[ensureWebSocketOpen] error while connecting', e);
+          reject(new Error('WebSocket error'));
+        };
+        const onClose = () => {
+          cleanup();
+          reject(new Error('WebSocket closed before open'));
+        };
+        const to = setTimeout(() => {
+          cleanup();
+          reject(new Error('WebSocket open timeout'));
+        }, timeout);
+
+        function cleanup() {
+          ws.removeEventListener('open', onOpen as EventListener);
+          ws.removeEventListener('error', onError as EventListener);
+          ws.removeEventListener('close', onClose as EventListener);
+          clearTimeout(to);
+        }
+
+        ws.addEventListener('open', onOpen as EventListener);
+        ws.addEventListener('error', onError as EventListener);
+        ws.addEventListener('close', onClose as EventListener);
+      });
+    }
+
+    // otherwise (CLOSED or CLOSING), create a fresh one and wait
+    console.debug('[ensureWebSocketOpen] socket not open, creating new');
+    const newWs = ensureWebSocket();
+    return await new Promise((resolve, reject) => {
+      const to = setTimeout(() => reject(new Error('WebSocket open timeout')), timeout);
+      newWs.addEventListener('open', () => { clearTimeout(to); resolve(newWs); }, { once: true });
+      newWs.addEventListener('error', (e) => { clearTimeout(to); reject(new Error('WebSocket error')); }, { once: true });
+    });
+  }
+
   function handleWsMessage(ev: MessageEvent) {
-    const msg = JSON.parse(ev.data);
+    let msg: any;
+    try {
+      msg = JSON.parse(ev.data);
+    } catch (e) {
+      debugLog('handleWsMessage - invalid json', ev.data);
+      return;
+    }
+    debugLog('handleWsMessage - type=', msg.type, 'payload=', msg);
     switch (msg.type) {
       case 'created':
         setCurrentRoom(msg.roomId);
@@ -115,15 +249,19 @@ export default function RealtimeBenchmarkPage() {
       case 'peer-joined':
         setConnectedPeer(true);
         toast.success('Peer joined');
-        // if I'm the creator, start negotiation
-        if (pcRef.current && (pcRef.current.signalingState === 'stable' || true)) {
-          createAndSendOffer();
+        // ensure PC exists then start negotiation
+        if (!pcRef.current) {
+          createPeerConnection().then(() => createAndSendOffer()).catch(e => debugLog('createPeerConnection failed', e));
+        } else {
+          if (pcRef.current.signalingState === 'stable') createAndSendOffer();
+          else createAndSendOffer();
         }
         break;
       case 'peer-left':
         setConnectedPeer(false);
         break;
       case 'signal':
+        debugLog('signal message', msg.data);
         if (msg.data?.type === 'offer') onReceiveOffer(msg.data.sdp);
         else if (msg.data?.type === 'answer') onReceiveAnswer(msg.data.sdp);
         else if (msg.data?.type === 'ice') onReceiveIce(msg.data.candidate);
@@ -142,7 +280,8 @@ export default function RealtimeBenchmarkPage() {
     try {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      ensureWebSocket().send(JSON.stringify({ type: 'signal', roomId: currentRoom, data: { type: 'offer', sdp: offer.sdp } }));
+      debugLog('createAndSendOffer - sending offer');
+      sendSignalingMessage({ type: 'signal', roomId: currentRoom, data: { type: 'offer', sdp: offer.sdp } });
     } catch (err) { console.error(err); }
   }
 
@@ -152,7 +291,8 @@ export default function RealtimeBenchmarkPage() {
     await pc.setRemoteDescription({ type: 'offer', sdp });
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
-    ensureWebSocket().send(JSON.stringify({ type: 'signal', roomId: currentRoom, data: { type: 'answer', sdp: answer.sdp } }));
+    debugLog('onReceiveOffer - sending answer');
+    sendSignalingMessage({ type: 'signal', roomId: currentRoom, data: { type: 'answer', sdp: answer.sdp } });
   }
 
   async function onReceiveAnswer(sdp: string) {
@@ -172,7 +312,10 @@ export default function RealtimeBenchmarkPage() {
     pcRef.current = pc;
 
     pc.onicecandidate = (ev) => {
-      if (ev.candidate) ensureWebSocket().send(JSON.stringify({ type: 'signal', roomId: currentRoom, data: { type: 'ice', candidate: ev.candidate } }));
+      if (ev.candidate) {
+        debugLog('onicecandidate - sending', ev.candidate);
+        sendSignalingMessage({ type: 'signal', roomId: currentRoom, data: { type: 'ice', candidate: ev.candidate } });
+      }
     };
 
     pc.ontrack = (ev) => {
@@ -256,15 +399,15 @@ export default function RealtimeBenchmarkPage() {
   }
 
   async function handleCreateRoom() {
-    ensureWebSocket();
-    wsRef.current!.send(JSON.stringify({ type: 'create' }));
+    debugLog('handleCreateRoom click');
+    sendSignalingMessage({ type: 'create' });
   }
 
   async function handleJoinRoom() {
     if (!roomId) return toast.error('Enter room id');
-    ensureWebSocket();
-    wsRef.current!.send(JSON.stringify({ type: 'join', roomId }));
+    debugLog('handleJoinRoom click, roomId=', roomId);
     if (!pcRef.current) await createPeerConnection();
+    sendSignalingMessage({ type: 'join', roomId });
   }
 
   return (
