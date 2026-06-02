@@ -13,6 +13,8 @@ const navItems = [
   { to: '/decrypt', label: "Deshifrlash", icon: '🔓' },
   { to: '/benchmark', label: "Ishlash sinovlari", icon: '📊' },
   { to: '/algorithms', label: 'Algoritmlar', icon: '🧬' },
+  { to: '/realtime', label: "Real-time video qo'ng'iroq", icon: '⏱️' },
+
 ];
 
 export default function Layout({ children }: LayoutProps) {

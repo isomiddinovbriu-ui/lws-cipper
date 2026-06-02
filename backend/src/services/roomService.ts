@@ -47,7 +47,8 @@ export function createRoom(hostId: string, ws: any): Room {
 export function joinRoom(roomId: string, clientId: string, ws: any): Room {
   const room = rooms.get(roomId);
   if (!room) throw new Error('Room not found');
-  if (room.participants.size >= 2) throw new Error('Room is full');
+  if (room.participants.size >= 2) throw new Error('Tarmoq to‘la'); // "Room is full" in Uzbek
+  if (room.participants.has(clientId)) throw new Error('Siz allaqachon tarmoqqa ulandingiz'); // "You are already in the room" in Uzbek
   room.participants.set(clientId, { id: clientId, ws });
   return room;
 }

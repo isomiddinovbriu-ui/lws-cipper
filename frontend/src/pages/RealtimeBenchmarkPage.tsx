@@ -88,7 +88,7 @@ export default function RealtimeBenchmarkPage() {
   const [historyPoints, setHistoryPoints] = useState<Array<Record<string, number | string>>>(
     []
   );
-  const [wsStatus, setWsStatus] = useState<string>('DISCONNECTED');
+  const [wsStatus, setWsStatus] = useState<string>('UZILGAN');
 
   const currentRoomRef = useRef<string | null>(null);
   const roomKeyHexRef = useRef<string | null>(null);
@@ -214,11 +214,11 @@ export default function RealtimeBenchmarkPage() {
     debugLog('ensureWebSocket - creating WebSocket to', wsUrl);
     const ws = new WebSocket(wsUrl);
     ws.binaryType = 'arraybuffer';
-    setWsStatus('CONNECTING');
+    setWsStatus('ULANMOQDA');
 
     ws.addEventListener('open', () => {
       console.log('[RealtimeBenchmark] websocket open');
-      setWsStatus('CONNECTED');
+      setWsStatus('ULANGAN');
     });
 
     ws.addEventListener('message', (ev) => {
@@ -233,7 +233,7 @@ export default function RealtimeBenchmarkPage() {
     ws.addEventListener('close', (ev) => {
       console.log('[RealtimeBenchmark] websocket close', ev);
       wsRef.current = null;
-      setWsStatus('DISCONNECTED');
+      setWsStatus('UZILGAN');
       toast.error('Signaling connection closed');
     });
 
@@ -309,19 +309,19 @@ export default function RealtimeBenchmarkPage() {
         updateCurrentRoom(msg.roomId);
         updateRoomKeyHex(msg.keyHex);
         console.log('[RealtimeBenchmark] room created', msg.roomId);
-        toast.success(`Room ${msg.roomId} created`);
+        toast.success(`Tarmoq yaratildi: ${msg.roomId}`);
         if (pcRef.current) tryAttachTransforms(pcRef.current);
         break;
       case 'joined':
         updateCurrentRoom(msg.roomId);
         updateRoomKeyHex(msg.keyHex);
         console.log('[RealtimeBenchmark] room joined', msg.roomId);
-        toast.success(`Joined room ${msg.roomId}`);
+        toast.success(`Tarmoqga kirildi: ${msg.roomId}`);
         if (pcRef.current) tryAttachTransforms(pcRef.current);
         break;
       case 'peer-joined':
         setConnectedPeer(true);
-        toast.success('Peer joined');
+        toast.success('Foydalanuvchi ulandi');
         // ensure PC exists then start negotiation
         if (!pcRef.current) {
           createPeerConnection().then(() => createAndSendOffer()).catch(e => debugLog('createPeerConnection failed', e));
@@ -654,7 +654,7 @@ export default function RealtimeBenchmarkPage() {
   console.log("[BENCHMARK] Chart data", chartData);
 
   // Prepare a table-like dataset for detailed results (keeps fixed algorithm order)
-  const algorithmOrder = ['chacha20', 'mickey', 'ascon', 'grain128aead', 'trivium'];
+  const algorithmOrder = ['chacha20'];
   const displayNames: Record<string, string> = {
     chacha20: 'ChaCha20',
     mickey: 'Mickey',
@@ -690,7 +690,7 @@ export default function RealtimeBenchmarkPage() {
   function downloadCiphertextReport(algoKey: string) {
     const item = exportSnapshotRef.current[algoKey];
     if (!item) {
-      toast.error(`No benchmark data yet for ${displayNames[algoKey] || algoKey}`);
+      toast.error(`Xali video qo'ng'iroq amalga oshirilmadi:  ${displayNames[algoKey] || algoKey} algoritmi uchun`);
       return;
     }
     const content = [
@@ -731,7 +731,7 @@ export default function RealtimeBenchmarkPage() {
 
       <div className="card flex items-center gap-3">
         <div className="flex gap-2">
-          <button onClick={handleCreateRoom} className="btn-primary">Create Room</button>
+          <button onClick={handleCreateRoom} className="btn-primary">Tarmoq yaratish</button>
 <input 
   value={roomId} 
   onChange={e => setRoomId(e.target.value)} 
@@ -739,19 +739,19 @@ export default function RealtimeBenchmarkPage() {
   className="input" 
   style={{ color: 'black' }} // Yozuv rangini qora qiladi
 />
-          <button onClick={handleJoinRoom} className="btn-secondary">Join Room</button>
+          <button onClick={handleJoinRoom} className="btn-secondary">Tarmoqqa kirish</button>
         </div>
         <div className="ml-auto">
-          <div>Signaling status: <strong style={{ color: wsStatus === 'CONNECTED' ? '#16a34a' : wsStatus === 'CONNECTING' ? '#ca8a04' : '#dc2626' }}>{wsStatus}</strong></div>
-          <div>Current room: <strong>{currentRoom ?? '-'}</strong></div>
-          <div>Connected: <strong>{connectedPeer ? 'Yes' : 'No'}</strong></div>
-          <div>Active algorithm: <strong>ChaCha20</strong></div>
-        </div>
+          <div>Tarmoq statusi :  <strong style={{ color: wsStatus === 'ULANGAN' ? '#16a34a' : wsStatus === 'ULANMOQDA' ? '#ca8a04' : '#dc2626' }}>{wsStatus}</strong></div>
+          <div>Tarmoq nomi: <strong>{currentRoom ?? '-'}</strong></div>
+          <div>Ulanish: <strong>{connectedPeer ? 'Ha' : 'Yo\'q'}</strong></div>
+          <div>Faol algoritm: <strong>ChaCha20</strong></div>
+        </div> 
       </div>
 
       <div className="grid grid-cols-4 gap-4">
         <div className="card">
-          <h3 className="font-semibold">Encryption Time (ms)</h3>
+          <h3 className="font-semibold">Shifrlash vaqt bo'yicha (ms)</h3>
           <div className="mt-2">
             <ResponsiveContainer width="100%" height={160}>
               <BarChart data={chartData.map(x => ({ algorithm: x.algorithm, value: x.encrypt }))}>
@@ -766,7 +766,7 @@ export default function RealtimeBenchmarkPage() {
         </div>
 
         <div className="card">
-          <h3 className="font-semibold">Decryption Time (ms)</h3>
+          <h3 className="font-semibold">Deshifrlash vaqt bo'yicha (ms)</h3>
           <div className="mt-2">
             <ResponsiveContainer width="100%" height={160}>
               <BarChart data={chartData.map(x => ({ algorithm: x.algorithm, value: x.decrypt }))}>
@@ -781,7 +781,7 @@ export default function RealtimeBenchmarkPage() {
         </div>
 
         <div className="card">
-          <h3 className="font-semibold">Throughput (MB/s)</h3>
+          <h3 className="font-semibold">O'tkazuvchanlik (MB/s)</h3>
           <div className="mt-2">
             <ResponsiveContainer width="100%" height={160}>
               <BarChart data={chartData.map(x => ({ algorithm: x.algorithm, value: x.throughput }))}>
@@ -796,7 +796,7 @@ export default function RealtimeBenchmarkPage() {
         </div>
 
         <div className="card">
-          <h3 className="font-semibold">Latency (ms)</h3>
+          <h3 className="font-semibold">Kechikish (ms)</h3>
           <div className="mt-2">
             <ResponsiveContainer width="100%" height={160}>
               <BarChart data={chartData.map(x => ({ algorithm: x.algorithm, value: x.latency }))}>
@@ -812,16 +812,16 @@ export default function RealtimeBenchmarkPage() {
       </div>
 
       <div className="card mt-6">
-        <h3 className="font-semibold mb-4">Detailed Results</h3>
+        <h3 className="font-semibold mb-4">Algoritm natijalari</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="text-sm text-slate-300">
-                <th className="py-2">Algorithm</th>
-                <th className="py-2">Encryption Time</th>
-                <th className="py-2">Decryption Time</th>
-                <th className="py-2">Throughput</th>
-                <th className="py-2">Latency</th>
+                <th className="py-2">Algoritm</th>
+                <th className="py-2">Shifrlash vaqti</th>
+                <th className="py-2">Deshifrlash vaqti</th>
+                <th className="py-2">O'tkazuvchanlik qobiliyati</th>
+                <th className="py-2">Kechikish</th>
               </tr>
             </thead>
             <tbody>
@@ -853,7 +853,7 @@ export default function RealtimeBenchmarkPage() {
 
       <div className="grid grid-cols-2 gap-4">
         <div className="card">
-          <h3 className="font-semibold">Encrypt Time History (ms)</h3>
+          <h3 className="font-semibold">Shifrlash vaqt bo'yicha (ms)</h3>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={historyPoints}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -862,13 +862,13 @@ export default function RealtimeBenchmarkPage() {
               <Tooltip />
               <Legend />
               {algorithmOrder.map((k) => (
-                <Line key={`${k}-enc`} type="monotone" dataKey={`${k}_enc`} name={`${displayNames[k]} Enc`} strokeWidth={2} dot={false} />
+                <Line key={`${k}-enc`} type="monotone" dataKey={`${k}_enc`} name={`${displayNames[k]}`} strokeWidth={2} dot={false} />
               ))}
             </LineChart>
           </ResponsiveContainer>
         </div>
         <div className="card">
-          <h3 className="font-semibold">Decrypt Time History (ms)</h3>
+          <h3 className="font-semibold">Deshifrlash vaqt bo'yicha (ms)</h3>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={historyPoints}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -877,13 +877,13 @@ export default function RealtimeBenchmarkPage() {
               <Tooltip />
               <Legend />
               {algorithmOrder.map((k) => (
-                <Line key={`${k}-dec`} type="monotone" dataKey={`${k}_dec`} name={`${displayNames[k]} Dec`} strokeWidth={2} dot={false} />
+                <Line key={`${k}-dec`} type="monotone" dataKey={`${k}_dec`} name={`${displayNames[k]}`} strokeWidth={2} dot={false} />
               ))}
             </LineChart>
           </ResponsiveContainer>
         </div>
         <div className="card">
-          <h3 className="font-semibold">Throughput History (MB/s)</h3>
+          <h3 className="font-semibold">O'tkazuvchanlik vaqt bo'yicha (MB/s)</h3>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={historyPoints}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -892,13 +892,13 @@ export default function RealtimeBenchmarkPage() {
               <Tooltip />
               <Legend />
               {algorithmOrder.map((k) => (
-                <Line key={`${k}-th`} type="monotone" dataKey={`${k}_th`} name={`${displayNames[k]} TH`} strokeWidth={2} dot={false} />
+                <Line key={`${k}-th`} type="monotone" dataKey={`${k}_th`} name={`${displayNames[k]}`} strokeWidth={2} dot={false} />
               ))}
             </LineChart>
           </ResponsiveContainer>
         </div>
         <div className="card">
-          <h3 className="font-semibold">Latency History (ms)</h3>
+          <h3 className="font-semibold">Kechikish vaqt bo'yicha (ms)</h3>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={historyPoints}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -907,7 +907,7 @@ export default function RealtimeBenchmarkPage() {
               <Tooltip />
               <Legend />
               {algorithmOrder.map((k) => (
-                <Line key={`${k}-lat`} type="monotone" dataKey={`${k}_lat`} name={`${displayNames[k]} Lat`} strokeWidth={2} dot={false} />
+                <Line key={`${k}-lat`} type="monotone" dataKey={`${k}_lat`} name={`${displayNames[k]}`} strokeWidth={2} dot={false} />
               ))}
             </LineChart>
           </ResponsiveContainer>
@@ -915,7 +915,7 @@ export default function RealtimeBenchmarkPage() {
       </div>
 
       <div className="card">
-        <h3 className="font-semibold mb-3">Ciphertext Export (TXT)</h3>
+        <h3 className="font-semibold mb-3">Shifrmatn yuklab olish (TXT)</h3>
         <div className="grid grid-cols-5 gap-2">
           {algorithmOrder.map((k) => (
             <button key={k} className="btn-secondary" onClick={() => downloadCiphertextReport(k)}>
